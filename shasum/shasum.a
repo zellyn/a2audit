@@ -1,0 +1,58 @@
+	!to "shasum.o", plain
+	* = $6000
+	jmp test
+
+	;; clear addresses:
+	;; (http://apple2.org.za/gswv/a2zine/faqs/csa2pfaq.html#017)
+	;; 06-09
+	;; EB-EF
+	;; FA-FD
+	
+	!addr	src = $06
+	!addr	dest = $08
+	!addr   input = $eb
+	
+h0:	!32 0			; return value (hash)
+h1:	!32 0
+h2:	!32 0
+h3:	!32 0
+h4:	!32 0
+ml:	!32 0			; message length
+w:	!fill 64, 0
+w_next:	!fill 64, 0
+kh0:	!be32 $67452301		; initial values for h0..h4
+kh1:	!be32 $EFCDAB89
+kh2:	!be32 $98BADCFE
+kh3:	!be32 $10325476
+kh4:	!be32 $C3D2E1F0
+k1:	!be32 $5A827999		; k = constants
+k2:	!be32 $6ED9EBA1
+k3:	!be32 $8F1BBCDC
+k4:	!be32 $CA62C1D6	
+test:	jsr $ff2d
+	rts
+
+	!eof
+
+TODOs
+[ ] Routine to print n hex bytes (address, length (byte))
+[ ] Routine to get the next 16 values (64 bytes)
+[ ] Routine to get w[i] one i at a time, and rebuild next 16 values
+[ ] Routine to get the next 16 values (64 bytes) of input
+
+Chacha20 code isn't so useful, because it's little-endian.
+
+611B ADD32
+612B XOR32
+613A ROL16
+6152 RORX
+6165 ROL12
+616E ROL8
+6180 ROL7
+6189 PR32
+
+Needed sha1sum:
+- leftrotate 1  --> ?
+- leftrotate 5  --> ROL8, RORX 3
+- leftrotate 30 --> RORX 2
+

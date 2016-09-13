@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+set -x
+export ACME="$HOME/gh/acme/ACME_Lib"
+cp ../dsk/blank.dsk floatbus.dsk
+acme apple_split_1.asm
+applecommander -d floatbus.dsk HELLO || echo '(No HELLO to delete)'
+applecommander -d floatbus.dsk BHELLO || echo '(No HELLO to delete)'
+applecommander -p floatbus.dsk HELLO A < hello.bas.bin
+applecommander -p floatbus.dsk BHELLO B 0x6000 < apple_split_1.o
