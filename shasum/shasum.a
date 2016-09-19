@@ -177,23 +177,16 @@ do_chunk:
 	!eof
 TODOs
 [X] Routine to print n hex bytes (address, length (byte))
-[ ] Routine to get the next 16 values (64 bytes)
+[X] Routine to get the next 16 values (64 bytes) of input
 [ ] Routine to get w[i] one i at a time, and rebuild next 16 values
-[ ] Routine to get the next 16 values (64 bytes) of input
 
-Chacha20 code isn't so useful, because it's little-endian.
-
-611B ADD32
-612B XOR32
-613A ROL16
-6152 RORX
-6165 ROL12
-616E ROL8
-6180 ROL7
-6189 PR32
-
-Needed sha1sum:
-- leftrotate 1  --> ?
-- leftrotate 5  --> ROL8, RORX 3
-- leftrotate 30 --> RORX 2
-
+Needed arithmetic routines for sha1sum:
+- [ ] add32
+- [ ] and32
+- [ ] or32
+- [ ] xor32
+- [ ] not32
+- [ ] ROL1
+- [ ] ROR1
+- [ ] ROL5  --> ROL8, (ROR1,ROR1,ROR1)
+- [ ] ROL30 --> (ROR1,ROR1)
