@@ -1,6 +1,6 @@
 	!to "shasum.o", plain
 	* = $6000
-	jmp test
+	jmp main
 
 	;; clear addresses:
 	;; (http://apple2.org.za/gswv/a2zine/faqs/csa2pfaq.html#017)
@@ -8,9 +8,13 @@
 	;; EB-EF
 	;; FA-FD
 	
-	!addr	src = $06
-	!addr	dest = $08
-	!addr   input = $eb
+	!addr	SRC = $06
+	!addr	DEST = $08
+	!addr   INPUT = $eb
+	!addr   LENGTH = $ee
+
+	!addr PRBYTE = $FDDA
+	!addr COUT = $FDED
 	
 h0:	!32 0			; return value (hash)
 h1:	!32 0
@@ -29,13 +33,150 @@ k1:	!be32 $5A827999		; k = constants
 k2:	!be32 $6ED9EBA1
 k3:	!be32 $8F1BBCDC
 k4:	!be32 $CA62C1D6	
-test:	jsr $ff2d
+
+;;; Print a string of bytes, as hex.
+;;; Address in SRC, count in A.
+;;; Burns Y, A.
+prbytes:
+	ldy #0
+-	pha
+	lda (SRC),y
+	jsr PRBYTE
+	iny
+	pla
+	adc #$ff
+	bne -
+	rts
+	
+main:
+	;; Test PRBYTES
+	;; lda #<kh0
+	;; sta SRC
+	;; lda #>kh0
+	;; sta SRC+1
+	;; lda #8
+	;; jsr prbytes
+	;; LDA #$8D
+	;; jsr COUT
+
+	;; Test shasum
+	lda #0
+	sta INPUT
+	lda #$ff
+	sta INPUT+1
+	lda #0
+	sta LENGTH+1
+	lda #$3b
+	sta LENGTH
+	jsr shasum
+	
 	rts
 
-	!eof
+shasum:
+	;; Initialize h0..h4
+	ldy #(ml-h0-1)
+-	lda kh0,y
+	sta h0,y
+	dey
+	bpl -
+	;; Initialize message length (ml)
+	lda #0
+	sta ml
+	sta ml+1
+	lda LENGTH
+	sta ml+3
+	lda LENGTH+1
+	sta ml+2
 
+	;; Message length is in bits
+	ldy #3
+-	clc
+	rol ml+3
+	rol ml+2
+	rol ml+1
+	dey
+	bne -
+
+	;; Initialize chunk counter
+	;; ldy #0			; already zero
+
+	;; Invert length so we can inc instead of dec
+	lda LENGTH
+	sec
+	lda #0
+	sbc LENGTH
+	sta LENGTH
+	lda #0
+	sbc LENGTH+1
+	sta LENGTH+1
+	ora LENGTH
+	beq .msgdone
+	
+.loop	lda (INPUT),y
+	sta w,y
+	iny
+	cpy #$40
+	bne +
+
+	;; Call do_chunk
+	jsr do_chunk
+	ldy #0
+
+	clc
+	lda INPUT
+	adc #$40
+	sta INPUT
+	bcc +
+	inc INPUT+1
+	
++	inc LENGTH
+	bne .loop
+	inc LENGTH+1
+	bne .loop
+	
+.msgdone:
+	lda #$80
+	sta w,y
+	iny
+	cpy #$40
+	bne .zeros
+	jsr do_chunk
+	ldy #0
+
+.zeros
+	cpy #$3C
+	beq .length
+	lda #0
+	sta w,y
+	iny
+	cpy #$40
+	bne .zeros
+	jsr do_chunk
+	ldy #0
+	jmp .zeros
+.length
+	ldy #3
+-	lda ml,y
+	sta w+$3c,y
+	dey
+	bpl -
+	jsr do_chunk
+	rts
+
+do_chunk:
+	lda #<w
+	sta SRC
+	lda #>w
+	sta SRC+1
+	lda #$40
+	jsr prbytes
+	lda #$8D
+	jsr COUT
+	rts
+	
+	!eof
 TODOs
-[ ] Routine to print n hex bytes (address, length (byte))
+[X] Routine to print n hex bytes (address, length (byte))
 [ ] Routine to get the next 16 values (64 bytes)
 [ ] Routine to get w[i] one i at a time, and rebuild next 16 values
 [ ] Routine to get the next 16 values (64 bytes) of input
