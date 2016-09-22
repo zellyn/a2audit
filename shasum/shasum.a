@@ -21,7 +21,7 @@ h1:	!32 0
 h2:	!32 0
 h3:	!32 0
 h4:	!32 0
-ml:	!32 0			; message length
+ml:	!32 0, 0		; message length
 w:	!fill 64, 0
 w_next:	!fill 64, 0
 kh0:	!be32 $67452301		; initial values for h0..h4
@@ -66,7 +66,7 @@ main:
 	sta INPUT+1
 	lda #0
 	sta LENGTH+1
-	lda #$3b
+	lda #$37
 	sta LENGTH
 	jsr shasum
 	
@@ -81,19 +81,21 @@ shasum:
 	bpl -
 	;; Initialize message length (ml)
 	lda #0
-	sta ml
-	sta ml+1
+	ldy #4
+-	sta ml, y
+	dey
+	bpl -
 	lda LENGTH
-	sta ml+3
+	sta ml+7
 	lda LENGTH+1
-	sta ml+2
+	sta ml+6
 
 	;; Message length is in bits
 	ldy #3
 -	clc
-	rol ml+3
-	rol ml+2
-	rol ml+1
+	rol ml+7
+	rol ml+6
+	rol ml+5
 	dey
 	bne -
 
@@ -144,7 +146,7 @@ shasum:
 	ldy #0
 
 .zeros
-	cpy #$3C
+	cpy #$38
 	beq .length
 	lda #0
 	sta w,y
@@ -155,9 +157,9 @@ shasum:
 	ldy #0
 	jmp .zeros
 .length
-	ldy #3
+	ldy #7
 -	lda ml,y
-	sta w+$3c,y
+	sta w+$38,y
 	dey
 	bpl -
 	jsr do_chunk
