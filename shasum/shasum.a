@@ -9,9 +9,11 @@
 	;; FA-FD
 	
 	!addr	SRC = $06
-	!addr	DEST = $08
+	!addr	DST = $08
 	!addr   INPUT = $eb
 	!addr   LENGTH = $ee
+	!addr   TMP1 = $fa
+	!addr   TMP2 = $fb
 
 	!addr PRBYTE = $FDDA
 	!addr COUT = $FDED
@@ -24,6 +26,7 @@ h4:	!32 0
 ml:	!32 0, 0		; message length
 w:	!fill 64, 0
 w_next:	!fill 64, 0
+k:	!32 0
 kh0:	!be32 $67452301		; initial values for h0..h4
 kh1:	!be32 $EFCDAB89
 kh2:	!be32 $98BADCFE
@@ -34,9 +37,33 @@ k2:	!be32 $6ED9EBA1
 k3:	!be32 $8F1BBCDC
 k4:	!be32 $CA62C1D6	
 
+	!macro cp32 .source, .target {
+	lda .source
+	sta .target
+	lda .source+1
+	sta .target+1
+	lda .source+2
+	sta .target+2
+	lda .source+3
+	sta .target+3
+	}
+
+	!macro setSRC .source {
+	lda #<.source
+	sta SRC
+	lda #>.source
+	sta SRC+1
+	}
+	!macro setDST .dest {
+	lda #<.dest
+	sta DST
+	lda #>.dest
+	sta DST+1
+	}
+
 ;;; Print a string of bytes, as hex.
 ;;; Address in SRC, count in A.
-;;; Burns Y, A.
+;;; Burns A,Y.
 prbytes:
 	ldy #0
 -	pha
@@ -166,14 +193,159 @@ shasum:
 	rts
 
 do_chunk:
-	lda #<w
+	ldy #0			; y is index into w
+	
+	;; First 20: k1
+	+cp32 k1, k
+
+	ldx #16
+-	jsr kind1
+	dex
+	bne -
+	jsr fill
+	ldx #4
+-	jsr kind1
+	dex
+	bne -
+	;; Second 20: k2
+	+cp32 k2, k
+
+	ldx #12
+-	jsr kind2
+	dex
+	bne -
+	jsr fill
+	ldx #8
+-	jsr kind2
+	dex
+	bne -
+
+	;; Third 20: k3
+	+cp32 k3, k
+
+	ldx #8
+-	jsr kind3
+	dex
+	bne -
+	jsr fill
+	ldx #12
+-	jsr kind3
+	dex
+	bne -
+
+	;; Fourth 20: k4
+	+cp32 k4, k
+
+	ldx #4
+-	jsr kind4
+	dex
+	bne -
+	jsr fill
+	ldx #16
+-	jsr kind4
+	dex
+	bne -
+	
+	rts
+
+kind1:
+kind2:
+kind3:
+kind4:
+	sty TMP1
+
+	clc
+	tya
+	adc #<w
 	sta SRC
-	lda #>w
+	lda #0
+	adc #>w
 	sta SRC+1
-	lda #$40
+	lda #4
 	jsr prbytes
-	lda #$8D
-	jsr COUT
+
+	ldy TMP1
+	iny
+	iny
+	iny
+	iny
+	rts
+
+	;; Replace w[i:i+16] with w[i+16:i+32]. Burns a. Sets y=0.
+fill:
+	stx TMP2
+
+	+setDST w_next
+	+setSRC w
+	ldx #0x10
+
+-	sec
+	lda DST
+	sbc #16*4
+	sta SRC
+	jsr cp32		; w[i] = w[i-16]
+	clc
+	lda SRC
+	adc #2*4
+	sta SRC
+	jsr xor32		;      ^ w[i-14]
+	lda SRC
+	adc #6*4
+	sta SRC
+	jsr xor32		;      ^ w[i-8]
+	lda SRC
+	adc #5*4
+	sta SRC
+	jsr xor32		;      ^ w[i-3]
+	jsr rol1
+	clc
+	lda DST
+	adc #4			; i++
+	sta DST
+
+	dex
+	bne -
+
+	ldx #w_next-w-1
+-	lda w_next,x
+	sta w,x
+	dex
+	bpl -
+	
+	ldy #0
+	ldx TMP2
+	rts
+
+	;; Rotate-left DST. Burns a,y.
+rol1:
+	ldy #0
+	lda (DST),y
+	rol
+	ldy #3
+-	lda (DST),y
+	rol
+	sta (DST),y
+	dey
+	bpl -
+	rts
+
+	;; Xor SRC into DST. Burns a,y.
+xor32:
+	ldy #3
+-	lda (SRC),y
+	eor (DST),y
+	sta (DST),y
+	dey
+	bpl -
+	rts
+
+	;; Copy DST to SRC. Burns a,y.
+cp32:
+	ldy #3
+-	lda (SRC),y
+	sta (DST),y
+	dey
+	bpl -
 	rts
 	
 	!eof
