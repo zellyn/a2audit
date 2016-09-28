@@ -23,9 +23,17 @@ h1:	!32 0
 h2:	!32 0
 h3:	!32 0
 h4:	!32 0
+h5:	
 ml:	!32 0, 0		; message length
 w:	!fill 64, 0
 w_next:	!fill 64, 0
+a:	!32 0
+b:	!32 0
+c:	!32 0
+d:	!32 0
+e:	!32 0
+f:	!32 0
+temp:	!32 0
 k:	!32 0
 kh0:	!be32 $67452301		; initial values for h0..h4
 kh1:	!be32 $EFCDAB89
@@ -93,15 +101,23 @@ main:
 	sta INPUT+1
 	lda #0
 	sta LENGTH+1
-	lda #$37
+	lda #$37		; 863ec5335a92b8289e4b1e5cbf646689fe81134b
+	lda #0			; da39a3ee5e6b4b0d3255bfef95601890afd80709
 	sta LENGTH
 	jsr shasum
-	
+
+	lda #$8d
+	jsr COUT
+
+	+setSRC h0
+	lda #(h5-h0)
+	jsr prbytes
+
 	rts
 
 shasum:
 	;; Initialize h0..h4
-	ldy #(ml-h0-1)
+	ldy #(h5-h0-1)
 -	lda kh0,y
 	sta h0,y
 	dey
@@ -119,8 +135,7 @@ shasum:
 
 	;; Message length is in bits
 	ldy #3
--	clc
-	rol ml+7
+-	asl ml+7
 	rol ml+6
 	rol ml+5
 	dey
@@ -192,7 +207,16 @@ shasum:
 	jsr do_chunk
 	rts
 
+;;; do_chunk processes a chunk of input. It burns A,X,Y,TMP1,TMP2.
 do_chunk:
+	;; Copy a..e from h0..h4
+	
+	ldy #(f-a-1)
+-	lda h0,y
+	sta a,y
+	dey
+	bpl -
+	
 	ldy #0			; y is index into w
 	
 	;; First 20: k1
@@ -237,23 +261,94 @@ do_chunk:
 	+cp32 k4, k
 
 	ldx #4
--	jsr kind4
+-	jsr kind2
 	dex
 	bne -
 	jsr fill
 	ldx #16
--	jsr kind4
+-	jsr kind2
 	dex
 	bne -
-	
+
+	+setSRC a
+	+setDST h0
+	ldx #5
+-	jsr add32
+	clc
+	lda SRC
+	adc #4
+	sta SRC
+	lda DST
+	adc #4
+	sta DST
+	dex
+	bne -
 	rts
 
 kind1:
-kind2:
-kind3:
-kind4:
 	sty TMP1
+	stx TMP2
+	;; f = d xor (b and (c xor d))
+	+setDST f
+	+setSRC d
+	jsr cp32
+	+setSRC c
+	jsr xor32
+	+setSRC b
+	jsr and32
+	+setSRC d
+	jsr xor32
+	jmp common
+kind2:
+	sty TMP1
+	stx TMP2
+	;; f = b xor c xor d
+	+setDST f
+	+setSRC d
+	jsr cp32
+	+setSRC c
+	jsr xor32
+	+setSRC b
+	jsr xor32
+	jmp common
+kind3:
+	sty TMP1
+	stx TMP2
+	;; f = (b and c) or (d and (b or c)) 
+	+setSRC c
+	+setDST f
+	jsr cp32
+	+setDST temp
+	jsr cp32
+	+setSRC b
+	jsr and32
+	+setDST f
+	jsr or32
+	+setSRC d
+	jsr and32
+	+setSRC temp
+	jsr or32
+	; jmp common
 
+common:
+
+        ;; temp = (a leftrotate 5) + f + e + k + w[i]
+	+setDST temp
+	+setSRC a
+	jsr cp32
+	jsr rol8
+	jsr ror1
+	jsr ror1
+	jsr ror1
+	+setSRC f
+	jsr add32
+	+setSRC e
+	jsr add32
+	+setSRC k
+	jsr add32
+
+	;; !setSRC w[i], and call add32
+	ldy TMP1
 	clc
 	tya
 	adc #<w
@@ -261,10 +356,41 @@ kind4:
 	lda #0
 	adc #>w
 	sta SRC+1
+	jsr add32
+
+	;; Print out w[i]
 	lda #4
 	jsr prbytes
+	
+        ;; e = d
+	+setSRC d
+	+setDST e
+	jsr cp32
 
+        ;; d = c
+	+setSRC c
+	+setDST d
+	jsr cp32
+
+        ;; c = b leftrotate 30
+	+setSRC b
+	+setDST c
+	jsr cp32
+	jsr ror1
+	jsr ror1
+	
+        ;; b = a
+	+setSRC a
+	+setDST b
+	jsr cp32
+	
+        ;; a = temp
+	+setSRC temp
+	+setDST a
+	jsr cp32
+	
 	ldy TMP1
+	ldx TMP2
 	iny
 	iny
 	iny
@@ -273,8 +399,6 @@ kind4:
 
 	;; Replace w[i:i+16] with w[i+16:i+32]. Burns a. Sets y=0.
 fill:
-	stx TMP2
-
 	+setDST w_next
 	+setSRC w
 	ldx #0x10
@@ -313,9 +437,12 @@ fill:
 	bpl -
 	
 	ldy #0
-	ldx TMP2
 	rts
 
+;;; 32-bit, big-endian math routines.
+;;; Result goes in DST. Second operand (if any)
+;;; comes from SRC.
+	
 	;; Rotate-left DST. Burns a,y.
 rol1:
 	ldy #0
@@ -327,6 +454,20 @@ rol1:
 	sta (DST),y
 	dey
 	bpl -
+	rts
+
+	;; Rotate-right DST. Burns a,y.
+ror1:
+	ldy #3
+	lda (DST),y
+	ror
+	ldy #0
+-	lda (DST),y
+	ror
+	sta (DST),y
+	iny
+	cpy #4
+	bne -
 	rts
 
 	;; Xor SRC into DST. Burns a,y.
@@ -347,20 +488,65 @@ cp32:
 	dey
 	bpl -
 	rts
+
+add32:
+	clc
+	ldy #3
+-	lda (SRC),y
+	adc (DST),y
+	sta (DST),y
+	dey
+	bpl -
+	rts
+
+and32:
+	clc
+	ldy #3
+-	lda (SRC),y
+	and (DST),y
+	sta (DST),y
+	dey
+	bpl -
+	rts
+
+or32:
+	clc
+	ldy #3
+-	lda (SRC),y
+	ora (DST),y
+	sta (DST),y
+	dey
+	bpl -
+	rts
+
+	;; Rotate DST right by 8 bits. Burns a,x,y.
+rol8:
+	ldy #0
+	lda (SRC),y
+	tax
+-	iny
+	lda (SRC),y
+	dey
+	sta (SRC),y
+	iny
+	cpy #3
+	bne -
+	txa
+	sta (SRC),y
+	rts
 	
 	!eof
 TODOs
 [X] Routine to print n hex bytes (address, length (byte))
 [X] Routine to get the next 16 values (64 bytes) of input
-[ ] Routine to get w[i] one i at a time, and rebuild next 16 values
+[X] Routine to get w[i] one i at a time, and rebuild next 16 values
 
 Needed arithmetic routines for sha1sum:
-- [ ] add32
-- [ ] and32
-- [ ] or32
-- [ ] xor32
-- [ ] not32
-- [ ] ROL1
-- [ ] ROR1
+- [X] add32
+- [X] and32
+- [X] or32
+- [X] xor32
+- [X] ROL1
+- [X] ROR1
 - [ ] ROL5  --> ROL8, (ROR1,ROR1,ROR1)
 - [ ] ROL30 --> (ROR1,ROR1)

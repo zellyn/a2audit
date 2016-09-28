@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/sha1"
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
@@ -44,6 +45,8 @@ var rom = []byte{
 
 func main() {
 	print40s(expand(pad(rom[:0x37])))
+	fmt.Printf("%x\n", sha1.Sum(rom[:0x37]))
+	fmt.Printf("%x\n", sha1.Sum(rom[:0]))
 }
 
 func print40s(in []byte) {
