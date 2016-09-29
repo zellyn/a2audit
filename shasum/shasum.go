@@ -44,9 +44,13 @@ var rom = []byte{
 }
 
 func main() {
-	print40s(expand(pad(rom[:0x37])))
-	fmt.Printf("%x\n", sha1.Sum(rom[:0x37]))
-	fmt.Printf("%x\n", sha1.Sum(rom[:0]))
+	// print40s(tobytes(expand(pad(rom[:0x37]))))
+	fmt.Printf("%X\n", sha1.Sum(rom[:0]))
+	// fmt.Printf("%X\n", shasum(rom[:0]))
+	// fmt.Printf("%X\n", sha1.Sum(rom[:0x37]))
+	fmt.Printf("%X\n", shasum(rom[:0x37]))
+	fmt.Printf("%X\n", sha1.Sum(rom[:0x100]))
+	// fmt.Printf("%X\n", shasum(rom[:0x100]))
 }
 
 func print40s(in []byte) {
@@ -74,7 +78,18 @@ func pad(in []byte) []byte {
 	return out
 }
 
-func expand(in []byte) []byte {
+func tobytes(in []uint32) []byte {
+	out := make([]byte, len(in)*4)
+	for i, w := range in {
+		binary.BigEndian.PutUint32(out[i*4:], w)
+	}
+	return out
+}
+
+func expand(in []byte) []uint32 {
+	if len(in) != 64 {
+		panic(fmt.Sprintf("expand() expects 64-byte slices as input; got %d", len(in)))
+	}
 	var w [80]uint32
 	for i := 0; i < 16; i++ {
 		w[i] = binary.BigEndian.Uint32(in[i*4:])
@@ -85,9 +100,74 @@ func expand(in []byte) []byte {
 		w[i] = w[i]<<1 + w[i]>>31
 	}
 
-	out := make([]byte, len(w)*4)
-	for i, wi := range w {
-		binary.BigEndian.PutUint32(out[i*4:], wi)
+	return w[:]
+}
+
+func shasum(in []byte) [20]byte {
+	h0 := uint32(0x67452301)
+	h1 := uint32(0xEFCDAB89)
+	h2 := uint32(0x98BADCFE)
+	h3 := uint32(0x10325476)
+	h4 := uint32(0xC3D2E1F0)
+	in2 := pad(in)
+	_ = in2
+
+	_ = h0
+	_ = h1
+	_ = h2
+	_ = h3
+	_ = h4
+
+	for j := 0; j < len(in2); j += 64 {
+		w := expand(in2[j : j+64])
+		if len(w) != 80 {
+			panic(fmt.Sprintf("expand should return 80 words; got %d", len(w)))
+		}
+
+		a := h0
+		b := h1
+		c := h2
+		d := h3
+		e := h4
+
+		var f, k uint32
+
+		for i, wi := range w {
+			switch {
+			case i <= 19:
+				f = d ^ (b & (c ^ d))
+				k = 0x5A827999
+			case i <= 39:
+				f = b ^ c ^ d
+				k = 0x6ED9EBA1
+			case i <= 59:
+				f = (b & c) | (d & (b | c))
+				k = 0x8F1BBCDC
+			default:
+				f = b ^ c ^ d
+				k = 0xCA62C1D6
+			}
+
+			temp := ((a << 5) | (a >> 27)) + f + e + k + wi
+			e = d
+			d = c
+			c = (b << 30) | (b >> 2)
+			b = a
+			a = temp
+		}
+
+		h0 += a
+		h1 += b
+		h2 += c
+		h3 += d
+		h4 += e
 	}
-	return out
+
+	var result [20]byte
+	binary.BigEndian.PutUint32(result[0:], h0)
+	binary.BigEndian.PutUint32(result[4:], h1)
+	binary.BigEndian.PutUint32(result[8:], h2)
+	binary.BigEndian.PutUint32(result[12:], h3)
+	binary.BigEndian.PutUint32(result[16:], h4)
+	return result
 }

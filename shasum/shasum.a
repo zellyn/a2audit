@@ -7,7 +7,7 @@
 	;; 06-09
 	;; EB-EF
 	;; FA-FD
-	
+
 	!addr	SRC = $06
 	!addr	DST = $08
 	!addr   INPUT = $eb
@@ -17,13 +17,13 @@
 
 	!addr PRBYTE = $FDDA
 	!addr COUT = $FDED
-	
+
 h0:	!32 0			; return value (hash)
 h1:	!32 0
 h2:	!32 0
 h3:	!32 0
 h4:	!32 0
-h5:	
+h5:
 ml:	!32 0, 0		; message length
 w:	!fill 64, 0
 w_next:	!fill 64, 0
@@ -43,7 +43,7 @@ kh4:	!be32 $C3D2E1F0
 k1:	!be32 $5A827999		; k = constants
 k2:	!be32 $6ED9EBA1
 k3:	!be32 $8F1BBCDC
-k4:	!be32 $CA62C1D6	
+k4:	!be32 $CA62C1D6
 
 	!macro cp32 .source, .target {
 	lda .source
@@ -82,19 +82,27 @@ prbytes:
 	adc #$ff
 	bne -
 	rts
-	
-main:
-	;; Test PRBYTES
-	;; lda #<kh0
-	;; sta SRC
-	;; lda #>kh0
-	;; sta SRC+1
-	;; lda #8
-	;; jsr prbytes
-	;; LDA #$8D
-	;; jsr COUT
 
-	;; Test shasum
+main:
+	;; Test shasum ""
+	lda #0
+	sta INPUT
+	lda #$ff
+	sta INPUT+1
+	lda #0
+	sta LENGTH+1
+	lda #0			; da39a3ee5e6b4b0d3255bfef95601890afd80709
+	sta LENGTH
+	jsr shasum
+
+	; lda #$8d
+	; jsr COUT
+
+	+setSRC h0
+	lda #(h5-h0)
+	jsr prbytes
+
+	;; Test shasum ROM[:0x37]
 	lda #0
 	sta INPUT
 	lda #$ff
@@ -102,17 +110,34 @@ main:
 	lda #0
 	sta LENGTH+1
 	lda #$37		; 863ec5335a92b8289e4b1e5cbf646689fe81134b
-	lda #0			; da39a3ee5e6b4b0d3255bfef95601890afd80709
 	sta LENGTH
 	jsr shasum
 
-	lda #$8d
-	jsr COUT
+	; lda #$8d
+	; jsr COUT
 
 	+setSRC h0
 	lda #(h5-h0)
 	jsr prbytes
+	
+	;; Test shasum ROM[:0x100]
+	lda #0
+	sta INPUT
+	lda #$ff
+	sta INPUT+1
+	lda #1
+	sta LENGTH+1
+	lda #0		; F0282F962EC20651431D385E813F6E0904F8F812
+	sta LENGTH
+	jsr shasum
 
+	; lda #$8d
+	; jsr COUT
+
+	+setSRC h0
+	lda #(h5-h0)
+	jsr prbytes
+	
 	rts
 
 shasum:
@@ -155,7 +180,7 @@ shasum:
 	sta LENGTH+1
 	ora LENGTH
 	beq .msgdone
-	
+
 .loop	lda (INPUT),y
 	sta w,y
 	iny
@@ -172,12 +197,12 @@ shasum:
 	sta INPUT
 	bcc +
 	inc INPUT+1
-	
+
 +	inc LENGTH
 	bne .loop
 	inc LENGTH+1
 	bne .loop
-	
+
 .msgdone:
 	lda #$80
 	sta w,y
@@ -210,15 +235,15 @@ shasum:
 ;;; do_chunk processes a chunk of input. It burns A,X,Y,TMP1,TMP2.
 do_chunk:
 	;; Copy a..e from h0..h4
-	
+
 	ldy #(f-a-1)
 -	lda h0,y
 	sta a,y
 	dey
 	bpl -
-	
+
 	ldy #0			; y is index into w
-	
+
 	;; First 20: k1
 	+cp32 k1, k
 
@@ -298,6 +323,7 @@ kind1:
 	jsr and32
 	+setSRC d
 	jsr xor32
+
 	jmp common
 kind2:
 	sty TMP1
@@ -310,11 +336,12 @@ kind2:
 	jsr xor32
 	+setSRC b
 	jsr xor32
+
 	jmp common
 kind3:
 	sty TMP1
 	stx TMP2
-	;; f = (b and c) or (d and (b or c)) 
+	;; f = (b and c) or (d and (b or c))
 	+setSRC c
 	+setDST f
 	jsr cp32
@@ -337,9 +364,11 @@ common:
 	+setSRC a
 	jsr cp32
 	jsr rol8
+
 	jsr ror1
 	jsr ror1
 	jsr ror1
+
 	+setSRC f
 	jsr add32
 	+setSRC e
@@ -358,10 +387,6 @@ common:
 	sta SRC+1
 	jsr add32
 
-	;; Print out w[i]
-	lda #4
-	jsr prbytes
-	
         ;; e = d
 	+setSRC d
 	+setDST e
@@ -378,17 +403,17 @@ common:
 	jsr cp32
 	jsr ror1
 	jsr ror1
-	
+
         ;; b = a
 	+setSRC a
 	+setDST b
 	jsr cp32
-	
+
         ;; a = temp
 	+setSRC temp
 	+setDST a
 	jsr cp32
-	
+
 	ldy TMP1
 	ldx TMP2
 	iny
@@ -435,14 +460,14 @@ fill:
 	sta w,x
 	dex
 	bpl -
-	
+
 	ldy #0
 	rts
 
 ;;; 32-bit, big-endian math routines.
 ;;; Result goes in DST. Second operand (if any)
 ;;; comes from SRC.
-	
+
 	;; Rotate-left DST. Burns a,y.
 rol1:
 	ldy #0
@@ -462,12 +487,16 @@ ror1:
 	lda (DST),y
 	ror
 	ldy #0
+	php
 -	lda (DST),y
+	plp
 	ror
+	php
 	sta (DST),y
 	iny
 	cpy #4
 	bne -
+	plp
 	rts
 
 	;; Xor SRC into DST. Burns a,y.
@@ -522,19 +551,19 @@ or32:
 	;; Rotate DST right by 8 bits. Burns a,x,y.
 rol8:
 	ldy #0
-	lda (SRC),y
+	lda (DST),y
 	tax
 -	iny
-	lda (SRC),y
+	lda (DST),y
 	dey
-	sta (SRC),y
+	sta (DST),y
 	iny
 	cpy #3
 	bne -
 	txa
-	sta (SRC),y
+	sta (DST),y
 	rts
-	
+
 	!eof
 TODOs
 [X] Routine to print n hex bytes (address, length (byte))
@@ -548,5 +577,5 @@ Needed arithmetic routines for sha1sum:
 - [X] xor32
 - [X] ROL1
 - [X] ROR1
-- [ ] ROL5  --> ROL8, (ROR1,ROR1,ROR1)
-- [ ] ROL30 --> (ROR1,ROR1)
+- [X] ROL5  --> ROL8, (ROR1,ROR1,ROR1)
+- [X] ROL30 --> (ROR1,ROR1)
