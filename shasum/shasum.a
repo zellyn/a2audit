@@ -40,19 +40,19 @@ kh1:	!be32 $EFCDAB89
 kh2:	!be32 $98BADCFE
 kh3:	!be32 $10325476
 kh4:	!be32 $C3D2E1F0
-k1:	!be32 $5A827999		; k = constants
-k2:	!be32 $6ED9EBA1
-k3:	!be32 $8F1BBCDC
-k4:	!be32 $CA62C1D6
+k1 = $5A827999		; k constants
+k2 = $6ED9EBA1
+k3 = $8F1BBCDC
+k4 = $CA62C1D6
 
-	!macro cp32 .source, .target {
-	lda .source
+	!macro set32 .target, .value {
+	lda #<(.value >> 24)
 	sta .target
-	lda .source+1
+	lda #<(.value >> 16)
 	sta .target+1
-	lda .source+2
+	lda #<(.value >> 8)
 	sta .target+2
-	lda .source+3
+	lda #<(.value)
 	sta .target+3
 	}
 
@@ -87,7 +87,7 @@ main:
 	;; Test shasum ""
 	lda #0
 	sta INPUT
-	lda #$ff
+	lda #$fe
 	sta INPUT+1
 	lda #0
 	sta LENGTH+1
@@ -102,14 +102,14 @@ main:
 	lda #(h5-h0)
 	jsr prbytes
 
-	;; Test shasum ROM[:0x37]
+	;; Test shasum FE00[:0x37]
 	lda #0
 	sta INPUT
-	lda #$ff
+	lda #$fe
 	sta INPUT+1
 	lda #0
 	sta LENGTH+1
-	lda #$37		; 863ec5335a92b8289e4b1e5cbf646689fe81134b
+	lda #$37		; 1CF73FC6156B548A949D315120B5256245EAA33E
 	sta LENGTH
 	jsr shasum
 
@@ -120,14 +120,50 @@ main:
 	lda #(h5-h0)
 	jsr prbytes
 	
-	;; Test shasum ROM[:0x100]
+	;; Test shasum FE00[:0x100]
 	lda #0
 	sta INPUT
-	lda #$ff
+	lda #$fe
 	sta INPUT+1
 	lda #1
 	sta LENGTH+1
-	lda #0		; F0282F962EC20651431D385E813F6E0904F8F812
+	lda #0		; 7B3D05347B52210065E27054FDFD0B8B699F0965
+	sta LENGTH
+	jsr shasum
+
+	; lda #$8d
+	; jsr COUT
+
+	+setSRC h0
+	lda #(h5-h0)
+	jsr prbytes
+	
+	;; Test shasum FE00[:0x1ff]
+	lda #0
+	sta INPUT
+	lda #$fe
+	sta INPUT+1
+	lda #$1
+	sta LENGTH+1
+	lda #$ff		; 269CA6B0C644DAC01D908B20C10C0D5B19C52ABF
+	sta LENGTH
+	jsr shasum
+
+	; lda #$8d
+	; jsr COUT
+
+	+setSRC h0
+	lda #(h5-h0)
+	jsr prbytes
+	
+	;; Test shasum FE00[:0x200]
+	lda #0
+	sta INPUT
+	lda #$fe
+	sta INPUT+1
+	lda #2
+	sta LENGTH+1
+	lda #0		; D5AC71D5EE76E31CC82CF5136151BF4CDA503601
 	sta LENGTH
 	jsr shasum
 
@@ -245,7 +281,7 @@ do_chunk:
 	ldy #0			; y is index into w
 
 	;; First 20: k1
-	+cp32 k1, k
+	+set32 k, k1
 
 	ldx #16
 -	jsr kind1
@@ -257,7 +293,7 @@ do_chunk:
 	dex
 	bne -
 	;; Second 20: k2
-	+cp32 k2, k
+	+set32 k, k2
 
 	ldx #12
 -	jsr kind2
@@ -270,7 +306,7 @@ do_chunk:
 	bne -
 
 	;; Third 20: k3
-	+cp32 k3, k
+	+set32 k, k3
 
 	ldx #8
 -	jsr kind3
@@ -283,7 +319,7 @@ do_chunk:
 	bne -
 
 	;; Fourth 20: k4
-	+cp32 k4, k
+	+set32 k, k4
 
 	ldx #4
 -	jsr kind2
