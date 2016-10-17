@@ -1,0 +1,19 @@
+function hexdiff {
+  if [ "$#" -ne 3 ]; then
+      echo "Usage: hexdiff size file1 file2" >&2
+      return 1
+  fi
+  local size=$1
+  local file1=$2
+  local file2=$3
+  if [ ! -e "$file1" ]; then
+      echo "File '$file1' not found"
+      return 1
+  fi
+  if [ ! -e "$file2" ]; then
+      echo "File '$file2' not found"
+      return 1
+  fi
+  echo $size
+  diff <(tail -c $size $file1 | od -t x1 -A x) <(tail -c $size $file2 | od -t x1 -A x)
+}
