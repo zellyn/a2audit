@@ -1,1 +1,3 @@
 *.o
+roms/*.bin
+floatbus/cfg

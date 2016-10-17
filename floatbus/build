@@ -3,8 +3,13 @@ set -euo pipefail
 set -x
 export ACME="$HOME/gh/acme/ACME_Lib"
 cp ../dsk/blank.dsk floatbus.dsk
+# Convert to binary HELLO.
+# See https://groups.google.com/d/topic/comp.sys.apple2.programmer/oEVsfLpZGvE
+printf '\x34' | dd conv=notrunc of=floatbus.dsk bs=1 seek=$((0x0d42))
+
 acme apple_split_1.asm
 applecommander -d floatbus.dsk HELLO || echo '(No HELLO to delete)'
-applecommander -d floatbus.dsk BHELLO || echo '(No HELLO to delete)'
-applecommander -p floatbus.dsk HELLO A < hello.bas.bin
-applecommander -p floatbus.dsk BHELLO B 0x6000 < apple_split_1.o
+applecommander -p floatbus.dsk HELLO B 0x6000 < apple_split_1.o
+
+# On my computer, run mame like this:
+# mame -rompath ~/mame/roms/ apple2ee -flop1 ./floatbus.dsk 
