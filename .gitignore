@@ -1,3 +1,7 @@
 *.o
 roms/*.bin
 floatbus/cfg
+audit/cfg
+
+# Temporarily...
+roms/*

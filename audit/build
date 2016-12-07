@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+export ACME="$HOME/gh/acme/ACME_Lib"
+
+acme audit.asm
+
+# Build audit.dsk with diskii (bit.ly/a2diskii), on a Super-Mon disk
+# =====================================================================
+
+cp ../dsk/supermon20.dsk audit.dsk
+# FHELLO: load file DF02 at 0x6000.
+echo -n -e '\x20\x40\x03\x6D\x01\xDC\x2C\x02\xDF\x2C\x00\x60\xF8\x4C\x00\x60' | diskii put -f audit.dsk DF01:FHELLO -
+diskii put -f audit.dsk DF02:FWORLD audit.o
+
+
+# On my computer, run mame like this:
+# mame -rompath ~/mame/roms/ apple2ee -flop1 ./audit.dsk
