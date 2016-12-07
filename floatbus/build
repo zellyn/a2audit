@@ -2,14 +2,27 @@
 set -euo pipefail
 set -x
 export ACME="$HOME/gh/acme/ACME_Lib"
-cp ../dsk/blank.dsk floatbus.dsk
-# Convert to binary HELLO.
-# See https://groups.google.com/d/topic/comp.sys.apple2.programmer/oEVsfLpZGvE
-printf '\x34' | dd conv=notrunc of=floatbus.dsk bs=1 seek=$((0x0d42))
 
 acme apple_split_1.asm
-applecommander -d floatbus.dsk HELLO || echo '(No HELLO to delete)'
-applecommander -p floatbus.dsk HELLO B 0x6000 < apple_split_1.o
+
+# # Build floatbus.dsk with applecommander, on an empty dos3.3 disk
+# # ===============================================================
+#
+# cp ../dsk/dos33-blank.dsk floatbus.dsk
+# # Convert to binary HELLO.
+# # See https://groups.google.com/d/topic/comp.sys.apple2.programmer/oEVsfLpZGvE
+# printf '\x34' | dd conv=notrunc of=floatbus.dsk bs=1 seek=$((0x0d42))
+# applecommander -d floatbus.dsk HELLO || echo '(No HELLO to delete)'
+# applecommander -p floatbus.dsk HELLO B 0x6000 < apple_split_1.o
+
+# Build floatbus.dsk with diskii (bit.ly/a2diskii), on a Super-Mon disk
+# =====================================================================
+
+cp ../dsk/supermon20.dsk floatbus.dsk
+# FHELLO: load file DF02 at 0x6000.
+echo -n -e '\x20\x40\x03\x6D\x01\xDC\x2C\x02\xDF\x2C\x00\x60\xF8\x4C\x00\x60' | diskii put -f floatbus.dsk DF01:FHELLO -
+diskii put -f floatbus.dsk DF02:FWORLD apple_split_1.o
+
 
 # On my computer, run mame like this:
-# mame -rompath ~/mame/roms/ apple2ee -flop1 ./floatbus.dsk 
+# mame -rompath ~/mame/roms/ apple2ee -flop1 ./floatbus.dsk
