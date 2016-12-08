@@ -19,6 +19,10 @@ main:
 	!zone detect {
 	jsr IDENTIFY
 	lda MACHINE
+	jsr PRBYTE
+	lda #$8D
+	jsr COUT
+	lda MACHINE
 	bne .known
 	;; MACHINE=0 - unknown machine
 	jsr print

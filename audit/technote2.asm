@@ -204,7 +204,7 @@ IDENTIFY
 	lda .lc1          ;bank on and check
 	cmp .save
 	beq .exit3
-	lda $C081
+	lda $C080
 	jmp .exit6
 .exit3	lda .lc2
 	cmp .save+1       ;if all locations check
@@ -327,13 +327,13 @@ IDENTIFY
 
 ;;; *  The storage locations for the returned machine ID:
 
-MACHINE !byte  1            ;the type of Apple II
-ROMLEVEL !byte  1            ;which revision of the machine
-MEMORY	!byte  1          ;how much memory (up to 128K)
-.IIgsA	!byte  2          ;16-bit field
-.IIgsX	!byte  2          ;16-bit field
-.IIgsY	!byte  2          ;16-bit field
-.save	!byte  6          ;six bytes for saved data
+MACHINE  !byte  0         ;the type of Apple II
+ROMLEVEL !byte  0         ;which revision of the machine
+MEMORY	 !byte  0         ;how much memory (up to 128K)
+.IIgsA	 !word  0         ;16-bit field
+.IIgsX	 !word  0         ;16-bit field
+.IIgsY	 !word  0         ;16-bit field
+.save	 !fill  6,0       ;six bytes for saved data
 
 .IDTable
 	;dc  I1'1,1'      ;Apple ][
