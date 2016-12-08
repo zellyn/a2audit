@@ -204,7 +204,7 @@ IDENTIFY
 	lda .lc1          ;bank on and check
 	cmp .save
 	beq .exit3
-	lda $C080
+	lda $C081
 	jmp .exit6
 .exit3	lda .lc2
 	cmp .save+1       ;if all locations check

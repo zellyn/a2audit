@@ -22,7 +22,7 @@ main:
 	bne .known
 	;; MACHINE=0 - unknown machine
 	jsr print
-	!text "UNABLE TO INDENTIFY",$8D,0
+	!text "UNABLE TO IDENTIFY",$8D,0
 	jmp end
 .known
 	cmp #IIeCard
