@@ -18,6 +18,7 @@ main:
 
 	!zone detect {
 	jsr IDENTIFY
+	lda $C082		; Put ROM back in place.
 	lda MACHINE
 	jsr PRBYTE
 	lda #$8D
