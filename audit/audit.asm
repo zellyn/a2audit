@@ -39,7 +39,7 @@ main:
 	beq .notsupported
 .gs	;PLUGH
 	jsr print
-	!text "IIGS",0
+	!text "APPLE IIGS",0
 .notsupported
 	jsr print
 	!text " NOT SUPPORTED",$8D,0
@@ -54,7 +54,14 @@ main:
 	beq .notsupported
 .iie
 	jsr print
-	!text "APPLE IIE",$8D,0
+	!text "APPLE IIE",0
+	lda ROMLEVEL
+	cmp #1
+	beq +
+	jsr print
+	!text " (ENHANCED)",0
++	lda #$8D
+	jsr COUT
 	beq .done
 .leiii
 	cmp #IIplus
