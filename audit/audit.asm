@@ -12,17 +12,27 @@
 main:
 	jsr HOME
 	jsr print
-	!text "APPLE II AUDIT",$8D,0
-	jsr print
-	!text "DETECTING MACHINE VERSION...",$8D,0
+	!text "APPLE II AUDIT",$8D,$8D,0
 
 	!zone detect {
 	jsr IDENTIFY
 	lda $C082		; Put ROM back in place.
-	lda MACHINE
-	jsr PRBYTE
-	lda #$8D
-	jsr COUT
+
+	jsr print
+	!text "MEMORY:",0
+	lda MEMORY
+	bpl +
+	jsr print
+	!text "128K",$8D,0
+	beq +++
++	cmp #64
+	bcc +
+	jsr print
+	!text "64K",$8D,0
+	beq +++
++	jsr print
+	!text "48K",$8D,0
++++
 	lda MACHINE
 	bne .known
 	;; MACHINE=0 - unknown machine
@@ -80,6 +90,17 @@ main:
 	!text "APPLE II PLUS",$8D,0
 .done
 	} ;detect
+
+	!zone langcard {
+	lda MEMORY
+	cmp #49
+	bcs +
+	jsr print
+	!text "48K:SKIPPING LANGUAGE CARD TEST",$8D,0
+	beq .done
++	
+.done
+	} ;langcard
 	
 end:	jmp *
 

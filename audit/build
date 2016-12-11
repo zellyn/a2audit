@@ -15,11 +15,11 @@ diskii put -f audit.dsk DF02:FWORLD audit.o
 
 # Also run mame? (set ROMPATH to your local variant)
 [[ -z "${ROMPATH-}" ]] && ROMPATH=~/mame/roms/
-[[ "$1" == '2ee' ]] && mame -rompath $ROMPATH apple2ee -flop1 ./audit.dsk -skip_gameinfo
-[[ "$1" == '2e' ]] && mame -rompath $ROMPATH apple2e -flop1 ./audit.dsk -skip_gameinfo
-[[ "$1" == '2p' ]] && mame -rompath $ROMPATH apple2p -flop1 ./audit.dsk -skip_gameinfo
-[[ "$1" == '2' ]] && mame -rompath $ROMPATH apple2 -flop1 ./audit.dsk -skip_gameinfo
-[[ "$1" == '2ee-d' ]] && mame -rompath $ROMPATH apple2ee -flop1 ./audit.dsk -skip_gameinfo -debug
-[[ "$1" == '2e-d' ]] && mame -rompath $ROMPATH apple2e -flop1 ./audit.dsk -skip_gameinfo -debug
-[[ "$1" == '2p-d' ]] && mame -rompath $ROMPATH apple2p -flop1 ./audit.dsk -skip_gameinfo -debug
-[[ "$1" == '2-d' ]] && mame -rompath $ROMPATH apple2 -flop1 ./audit.dsk -skip_gameinfo -debug
+[[ "${1-}" == '2ee' ]] && mame -rompath $ROMPATH apple2ee -flop1 ./audit.dsk -skip_gameinfo
+[[ "${1-}" == '2e' ]] && mame -rompath $ROMPATH apple2e -flop1 ./audit.dsk -skip_gameinfo
+[[ "${1-}" == '2p' ]] && mame -rompath $ROMPATH apple2p -flop1 ./audit.dsk -skip_gameinfo
+[[ "${1-}" == '2' ]] && mame -rompath $ROMPATH apple2 -flop1 ./audit.dsk -skip_gameinfo
+[[ "${1-}" == '2ee-d' ]] && mame -rompath $ROMPATH apple2ee -flop1 ./audit.dsk -skip_gameinfo -debug
+[[ "${1-}" == '2e-d' ]] && mame -rompath $ROMPATH apple2e -flop1 ./audit.dsk -skip_gameinfo -debug
+[[ "${1-}" == '2p-d' ]] && mame -rompath $ROMPATH apple2p -flop1 ./audit.dsk -skip_gameinfo -debug
+[[ "${1-}" == '2-d' ]] && mame -rompath $ROMPATH apple2 -flop1 ./audit.dsk -skip_gameinfo -debug
