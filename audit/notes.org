@@ -21,3 +21,5 @@ D747 F0
 D74B D7
 D768 85
 D76E 65
+* Links to things to test
+** TODO [[https://groups.google.com/d/msg/comp.sys.apple2/RMnus8p6xp8/TDfD2HVtDwAJ][csa2: question on HGR behavior with enhanced 128K Apple //e]]
