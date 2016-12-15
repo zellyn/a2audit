@@ -91,5 +91,3 @@
 	+printed
 .done
 	} ;detect
-
-	!src "technote2.asm"

@@ -41,6 +41,8 @@ getch2	lda $FEED
 	jmp getch2
 +	rts
 
+	!src "technote2.asm"
+
 ;	!if * != STRINGS {
 ;	!error "Expected STRINGS to be ", *
 ;	}
@@ -48,3 +50,4 @@ getch2	lda $FEED
 	!if * > STRINGS {
 	!error "End of compilation passed STRINGS:", *
 	}
+
