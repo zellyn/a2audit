@@ -124,6 +124,34 @@
 	+prerred
 	beq .done
 
++	lda $C089		; ROM read
+	lda $D17B
+	cmp #$53
+	beq ++
+	cmp #$55
+	bne +
+	+prerr $0011 ;; E0011: Read $C089 (read ROM), but the language card is still reading bank 1.
+	!text "$C089: BANK 1 ACTIVE"
+	+prerred
+	beq .done
++	cmp #$AA
+	bne +
+	+prerr $0012 ;; E0012: Read $C089 (read ROM), but the language card is reading bank 2.
+	!text "$C089: BANK 1 ACTIVE"
+	+prerred
+	beq .done
++	+prerr $0013 ;; E0013: Read $C089 (read ROM), but the check byte ($D17B) is an unknown value.
+	!text "$C089: UNKNOWN BYTE"
+	+prerred
+	beq .done
+++	dec $D17B
+	eor $D17B
+	beq +
+	+prerr $0014 ;; E0014: Read $C089 (read ROM), but successfully modified byte ($D17B).
+	!text "$C089: ALLOWED WRITE"
+	+prerred
+	beq .done
+
 +	
 
 	;; Success

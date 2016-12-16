@@ -26,11 +26,11 @@ Read $C088 (read bank 1), but the language card is still reading bank 2.
 
 ## E0007
 
-Read $C088 (read bank 1), but the language card is reading ROM.
+Read $C088 (read bank 1), but the check byte ($D17B) is an unknown value.
 
 ## E0007
 
-Read $C088 (read bank 1), but the check byte ($D17B) is an unknown value.
+Read $C088 (read bank 1), but the language card is reading ROM.
 
 ## E0008
 
@@ -67,3 +67,19 @@ Read $C081 (read ROM), but the check byte ($D17B) is an unknown value.
 ## E0010
 
 Read $C081 (read ROM), but successfully modified byte ($D17B).
+
+## E0011
+
+Read $C089 (read ROM), but the language card is still reading bank 1.
+
+## E0012
+
+Read $C089 (read ROM), but the language card is reading bank 2.
+
+## E0013
+
+Read $C089 (read ROM), but the check byte ($D17B) is an unknown value.
+
+## E0014
+
+Read $C089 (read ROM), but successfully modified byte ($D17B).

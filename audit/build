@@ -12,6 +12,12 @@ cp ../dsk/supermon20.dsk audit.dsk
 diskii nakedos mkhello audit.dsk DF02
 diskii put -f audit.dsk DF02:FWORLD audit.o
 
+# Extract extended error strings and rebuild ../v0/index.md
+echo -e '# V0 Errors' > ../v0/index.md
+grep -h '+prerr .*;;' *.asm | awk -F' ;; ' '{print $2}' | sort | sed 's|\(E....\): |\
+## \1\
+\
+|' >> ../v0/index.md
 
 # Also run mame? (set ROMPATH to your local variant)
 [[ -z "${ROMPATH-}" ]] && ROMPATH=~/mame/roms/
@@ -23,3 +29,4 @@ diskii put -f audit.dsk DF02:FWORLD audit.o
 [[ "${1-}" == '2e-d' ]] && mame -rompath $ROMPATH apple2e -flop1 ./audit.dsk -skip_gameinfo -debug
 [[ "${1-}" == '2p-d' ]] && mame -rompath $ROMPATH apple2p -flop1 ./audit.dsk -skip_gameinfo -debug
 [[ "${1-}" == '2-d' ]] && mame -rompath $ROMPATH apple2 -flop1 ./audit.dsk -skip_gameinfo -debug
+
