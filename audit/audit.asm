@@ -29,18 +29,22 @@ main:
 	
 end:	jmp *
 
-print2
+print
 	lda $C081
 	lda $C081
-getch2	lda $FEED
+	pla
+	sta getch+1
+	pla
+	sta getch+2
+-	inc getch+1
+	bne getch
+	inc getch+2
+getch	lda $FEED		; FEED gets modified
 	beq +
 	jsr COUT
-	inc getch2+1
-	bne getch2
-	inc getch2+2
-	jmp getch2
+	jmp -
 +	rts
-
+	
 	!src "technote2.asm"
 
 ;	!if * != STRINGS {

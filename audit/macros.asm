@@ -2,14 +2,12 @@
 ;;; Copyright © 2016 Zellyn Hunter <zellyn@gmail.com>
 
 	!macro print {
-	lda #<LASTSTRING
-	sta getch2+1
-	lda #>LASTSTRING
-	sta getch2+2
-	jsr print2
+	jsr LASTSTRING
 	!set TEMP = *
 	* = LASTSTRING
+	jsr print
 	}
+
 	!macro printed {
 	!byte 0
 	!set LASTSTRING=*
