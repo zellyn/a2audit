@@ -7,7 +7,9 @@
 
 	HOME = $FC58
 	COUT = $FDED
+	CROUT = $FD8E
 	PRBYTE = $FDDA
+	PRNTYX = $F940
 
 	STRINGS = $7000
 	!set LASTSTRING = $7000
@@ -44,7 +46,36 @@ getch	lda $FEED		; FEED gets modified
 	jsr COUT
 	jmp -
 +	rts
-	
+
+errora
+	pha
+	lda $C082
+	lda #'A'
+	jsr COUT
+	lda #':'
+	jsr COUT
+	pla
+	jsr PRBYTE
+	jsr CROUT
+error
+	lda $C082
+	pla
+	sta getche+1
+	pla
+	sta getche+2
+-	inc getche+1
+	bne getche
+	inc getche+2
+getche	lda $FEED		; FEED gets modified
+	beq +
+	jsr COUT
+	jmp -
++	
+	+print
+	!text "ZELLYN.COM/A2AUDIT/V0#E",0
+	+printed
+	jsr PRNTYX
+rts
 	!src "technote2.asm"
 
 ;	!if * != STRINGS {

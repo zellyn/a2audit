@@ -14,7 +14,7 @@ diskii put -f audit.dsk DF02:FWORLD audit.o
 
 # Extract extended error strings and rebuild ../v0/index.md
 echo -e '# V0 Errors' > ../v0/index.md
-grep -h '+prerr .*;;' *.asm | awk -F' ;; ' '{print $2}' | sort | sed 's|\(E....\): |\
+grep -h '+prerra\? .*;;' *.asm | awk -F' ;; ' '{print $2}' | sort | sed 's|\(E....\): |\
 ## \1\
 \
 |' >> ../v0/index.md

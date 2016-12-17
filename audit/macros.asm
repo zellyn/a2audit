@@ -15,9 +15,22 @@
 	}
 
 	!macro prerr NUM {
-	+print
+	jsr LASTSTRING
+	!set TEMP = *
+	* = LASTSTRING
+	jsr error
 	}
 	!macro prerred {
 	!byte $8D
 	+printed
+	}
+
+	;; A version of prerr that also displays the current value of A.
+	!macro prerra NUM {
+	ldy #>NUM
+	ldx #<NUM
+	jsr LASTSTRING
+	!set TEMP = *
+	* = LASTSTRING
+	jsr errora
 	}
