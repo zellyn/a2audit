@@ -208,6 +208,226 @@
 	+prerred
 .done5	jmp .done
 ++
+	;; Parameterized tests
+
+	lda #<.tests
+	sta 0
+	lda #>.tests
+	sta 1
+.outer
+	;; Initialize to known state:
+	;; - $55 in $D17B bank 1 (ROM: $53)
+	;; - $AA in $D17B bank 2 (ROM: $53)
+	;; - $55 in $FE1F        (ROM: $60)
+	lda $C08B		; Read and write bank 1
+	lda $C08B
+	lda #$55
+	sta $D17B
+	sta $FE1F
+	lda $C083		; Read and write bank 2
+	lda $C083
+	lda #$AA
+	sta $D17B
+	lda $C080
+
+	ldy #0
+
+.inner
+	lda ($0),y
+	cmp #$ff
+	beq .test
+	tax
+	bmi +
+	lda $C080,x
+	jmp ++
++	sta $C000,x
+++	iny
+	bne .inner
+
+.test	;; ... test the triple
+	inc $D17B
+	inc $FE1F
+	iny
+
+	;; y now points to d17b-current,fe1f-current,bank1,bank2,fe1f-ram test quintiple
+
+	;; Test current $D17B
+	lda (0),y
+	cmp $D17B
+	beq +
+	lda $D17B
+	pha
+	jsr .printseq
+	+print
+	!text "$D17B TO CONTAIN $"
+	+printed
+	lda (0),y
+	jsr PRBYTE
+	+print
+	!text ", GOT $"
+	+printed
+	pla
+	jsr PRBYTE
+	lda #$8D
+	jsr COUT
+	jmp .done
+	
++	iny
+	;; Test current $FE1F
+	lda (0),y
+	cmp $FE1F
+	beq +
+	lda $FE1F
+	pha
+	jsr .printseq
+	+print
+	!text "$FE1F=$"
+	+printed
+	lda (0),y
+	jsr PRBYTE
+	+print
+	!text ", GOT $"
+	+printed
+	pla
+	jsr PRBYTE
+	lda #$8D
+	jsr COUT
+	jmp .done
+	
++	iny
+
+	;; Test bank 1 $D17B
+	lda $C088
+	lda (0),y
+	cmp $D17B
+	beq +
+	lda $D17B
+	pha
+	jsr .printseq
+	+print
+	!text "$D17B IN RAM BANK 1 TO CONTAIN $"
+	+printed
+	lda (0),y
+	jsr PRBYTE
+	+print
+	!text ", GOT $"
+	+printed
+	pla
+	jsr PRBYTE
+	lda #$8D
+	jsr COUT
+	jmp .done
+	
++	iny
+
+	;; Test bank 2 $D17B
+	lda $C080
+	lda (0),y
+	cmp $D17B
+	beq +
+	lda $D17B
+	pha
+	jsr .printseq
+	+print
+	!text "$D17B IN RAM BANK 2 TO CONTAIN $"
+	+printed
+	lda (0),y
+	jsr PRBYTE
+	+print
+	!text ", GOT $"
+	+printed
+	pla
+	jsr PRBYTE
+	lda #$8D
+	jsr COUT
+	jmp .done
+
++	iny
+
+	;; Test RAM $FE1F
+	lda $C080
+	lda (0),y
+	cmp $FE1F
+	beq +
+	lda $FE1F
+	pha
+	jsr .printseq
+	+print
+	!text "RAM $FE1F=$"
+	+printed
+	lda (0),y
+	jsr PRBYTE
+	+print
+	!text ", GOT $"
+	+printed
+	pla
+	jsr PRBYTE
+	lda #$8D
+	jsr COUT
+	jmp .done
+
++	iny
+
+	lda ($0),y		; Done with the parameterized tests?
+	cmp #$ff
+	beq .over
+	clc
+	tya
+	adc $0
+	sta $0
+	bcc +
+	inc $1
++	jmp .outer
+	
+.tests
+	;; Format:
+	;; - $ff-terminated list of C0XX addresses (0-F to read C08X, 80-8F to write C0XX).
+	;; - quint: expected current $d17b and fe1f, then d17b in bank1, d17b in bank 2, and fe1f
+	!byte $8, $ff		; Read $C088 (RAM read, write protected)
+	!byte $55, $55, $55, $AA, $55
+	!byte $ff
+
+	nop			; Provide clean break after data when viewing disassembly
+	nop
+	nop
+.printseq
+	tya
+	pha
+	+print
+	!text "AFTER SEQUENCE OF:",$8D,"LDA $C080",$8D
+	+printed
+	ldy #$0
+-	lda ($0),y
+	cmp #$ff
+	beq +++
+	tax
+	bmi +
+	lda #'L'
+	jsr COUT
+	lda #'D'
+	bne ++
++	lda #'S'
+	jsr COUT
+	lda #'T'
+++	jsr COUT
+	+print
+	!text "A $C0"
+	+printed
+	txa
+	ora #$80
+	jsr PRBYTE
+	lda #$8D
+	jsr COUT
+	iny
+	bne -
++++
+	+print
+	!text "INC $D17B",$8D,"INC $FE1F",$8D,"EXPECTED "
+	+printed
+	pla
+	tay
+	rts
+.over
 
 	;; Success
 	+print
