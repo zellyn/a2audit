@@ -270,7 +270,7 @@
 	jsr PRBYTE
 	lda #$8D
 	jsr COUT
-	jmp .done
+	jmp .datatesturl
 	
 +	iny
 	;; Test current $FE1F
@@ -292,7 +292,7 @@
 	jsr PRBYTE
 	lda #$8D
 	jsr COUT
-	jmp .done
+	jmp .datatesturl
 	
 +	iny
 
@@ -316,7 +316,7 @@
 	jsr PRBYTE
 	lda #$8D
 	jsr COUT
-	jmp .done
+	jmp .datatesturl
 	
 +	iny
 
@@ -340,7 +340,7 @@
 	jsr PRBYTE
 	lda #$8D
 	jsr COUT
-	jmp .done
+	jmp .datatesturl
 
 +	iny
 
@@ -364,7 +364,7 @@
 	jsr PRBYTE
 	lda #$8D
 	jsr COUT
-	jmp .done
+	jmp .datatesturl
 
 +	iny
 
@@ -378,18 +378,13 @@
 	bcc +
 	inc $1
 +	jmp .outer
-	
-.tests
-	;; Format:
-	;; - $ff-terminated list of C0XX addresses (0-F to read C08X, 80-8F to write C0XX).
-	;; - quint: expected current $d17b and fe1f, then d17b in bank1, d17b in bank 2, and fe1f
-	!byte $8, $ff		; Read $C088 (RAM read, write protected)
-	!byte $55, $55, $55, $AA, $55
-	!byte $ff
 
-	nop			; Provide clean break after data when viewing disassembly
-	nop
-	nop
+.datatesturl
+	+prerr $001E ;; E001E: We initialized $D17B in RAM bank 1 to $55, $D17B in RAM bank 2 to $AA, and $FE1F in RAM to $55. Then, we perform a testdata-driven sequence of LDA and STA to the $C08X range. Finally we (try to) increment $D17B and $FE1F. Then we test (a) the current live value in $D17B, (b) the current live value in $FE1F, (c) the RAM bank 1 value of $D17B, (d) the RAM bank 2 value of $D17B, and (e) the RAM value of $FE1F, to see whether they match expected values. $D17B is usually $53 in ROM, and $FE1F is usally $60.
+	!text "DATA-DRIVEN TEST FAILED"
+	+prerred
+	beq .done
+	
 .printseq
 	tya
 	pha
@@ -427,6 +422,18 @@
 	pla
 	tay
 	rts
+
+.tests
+	;; Format:
+	;; - $ff-terminated list of C0XX addresses (0-F to read C08X, 80-8F to write C0XX).
+	;; - quint: expected current $d17b and fe1f, then d17b in bank1, d17b in bank 2, and fe1f
+	!byte $8, $ff		; Read $C088 (RAM read, write protected)
+	!byte $55, $55, $55, $AA, $54
+	!byte $ff
+
+	nop			; Provide clean break after data when viewing disassembly
+	nop
+	nop
 .over
 
 	;; Success

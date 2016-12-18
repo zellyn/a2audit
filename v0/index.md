@@ -115,3 +115,7 @@ Read $C083 (read bank 2); byte should have been previously NOT been writable to 
 ## E001D
 
 Read $C083 (read bank 2), but the check byte ($D17B) is an unknown value.
+
+## E001E
+
+We initialized $D17B in RAM bank 1 to $55, $D17B in RAM bank 2 to $AA, and $FE1F in RAM to $55. Then, we perform a testdata-driven sequence of LDA and STA to the $C08X range. Finally we (try to) increment $D17B and $FE1F. Then we test (a) the current live value in $D17B, (b) the current live value in $FE1F, (c) the RAM bank 1 value of $D17B, (d) the RAM bank 2 value of $D17B, and (e) the RAM value of $FE1F, to see whether they match expected values. $D17B is usually $53 in ROM, and $FE1F is usally $60.
