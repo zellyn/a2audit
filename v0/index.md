@@ -94,8 +94,24 @@ Read $C08B (read bank 1), but the language card is reading ROM.
 
 ## E0018
 
-Read $C08B (read bank 1), but byte was previously decremented during single-read $C089 or $C081 phase, which should have Write-protected RAM.
+Read $C08B (read bank 1); byte should have been previously incremented from ROM ($53) to $54 because of lda $C089 after previous lda $C081.
 
 ## E0019
 
 Read $C08B (read bank 1), but the check byte ($D17B) is an unknown value.
+
+## E001A
+
+Read $C083 (read bank 2), but the language card is still reading bank 1.
+
+## E001B
+
+Read $C083 (read bank 2), but the language card is reading ROM.
+
+## E001C
+
+Read $C083 (read bank 2); byte should have been previously NOT been writable to be decremented from ROM ($53) to $52 because of single lda $C081 after previous lda $C080.
+
+## E001D
+
+Read $C083 (read bank 2), but the check byte ($D17B) is an unknown value.

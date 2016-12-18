@@ -15,6 +15,8 @@
 	}
 
 	!macro prerr NUM {
+	ldy #>NUM
+	ldx #<NUM
 	jsr LASTSTRING
 	!set TEMP = *
 	* = LASTSTRING

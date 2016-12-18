@@ -23,3 +23,16 @@ D768 85
 D76E 65
 * Links to things to test
 ** TODO [[https://groups.google.com/d/msg/comp.sys.apple2/RMnus8p6xp8/TDfD2HVtDwAJ][csa2: question on HGR behavior with enhanced 128K Apple //e]]
+* Language card operation
+
+
+| Bank 2 | Bank 1 |     | Action     | RAM          | Alt Bank 2 | Alt Bank 1 |
+|--------+--------+-----+------------+--------------+------------+------------|
+| C080   | C088   | R/W | WRTCOUNT=0 | READ ENABLE  | C084       | C08C       |
+| C081   | C089   | R   | WRTCOUNT++ | READ DISABLE | C085       | C08D       |
+|        |        | W   | WRTCOUNT=0 | READ DISABLE |            |            |
+| C082   | C08A   | R/W | WRTCOUNT=0 | READ DISABLE | C086       | C08E       |
+| C083   | C08B   | R   | WRTCOUNT++ | READ ENABLE  | C087       | C08F       |
+|        |        | W   | WRTCOUNT=0 | READ ENABLE  |            |            |
+Writing to high RAM is enabled when WRTCOUNT >= 2
+Source: UtA2e, pg 5-24.
