@@ -428,7 +428,7 @@
 	;; - $ff-terminated list of C0XX addresses (0-F to read C08X, 80-8F to write C0XX).
 	;; - quint: expected current $d17b and fe1f, then d17b in bank1, d17b in bank 2, and fe1f
 	!byte $8, $ff		; Read $C088 (RAM read, write protected)
-	!byte $55, $55, $55, $AA, $54
+	!byte $55, $55, $55, $AA, $55
 	!byte $ff
 
 	nop			; Provide clean break after data when viewing disassembly
