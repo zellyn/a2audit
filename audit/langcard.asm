@@ -238,9 +238,12 @@
 	beq .test
 	tax
 	bmi +
-	lda $C080,x
+	ora #$80
+	sta .lda+1
+.lda	lda $C000
 	jmp ++
-+	sta $C000,x
++	sta .sta+1
+.sta	sta $C000
 ++	iny
 	bne .inner
 
@@ -380,7 +383,7 @@
 +	jmp .outer
 
 .datatesturl
-	+prerr $001E ;; E001E: We initialized $D17B in RAM bank 1 to $55, $D17B in RAM bank 2 to $AA, and $FE1F in RAM to $55. Then, we perform a testdata-driven sequence of LDA and STA to the $C08X range. Finally we (try to) increment $D17B and $FE1F. Then we test (a) the current live value in $D17B, (b) the current live value in $FE1F, (c) the RAM bank 1 value of $D17B, (d) the RAM bank 2 value of $D17B, and (e) the RAM value of $FE1F, to see whether they match expected values. $D17B is usually $53 in ROM, and $FE1F is usally $60.
+	+prerr $001E ;; E001E: We initialized $D17B in RAM bank 1 to $55, $D17B in RAM bank 2 to $AA, and $FE1F in RAM to $55. Then, we perform a testdata-driven sequence of LDA and STA to the $C08X range. Finally we (try to) increment $D17B and $FE1F. Then we test (a) the current live value in $D17B, (b) the current live value in $FE1F, (c) the RAM bank 1 value of $D17B, (d) the RAM bank 2 value of $D17B, and (e) the RAM value of $FE1F, to see whether they match expected values. $D17B is usually $53 in ROM, and $FE1F is usally $60. For more information on the operation of the language card soft-switches, see Understanding the Apple IIe, by James Fielding Sather, Pg 5-24.
 	!text "DATA-DRIVEN TEST FAILED"
 	+prerred
 	beq .done
@@ -427,8 +430,15 @@
 	;; Format:
 	;; - $ff-terminated list of C0XX addresses (0-F to read C08X, 80-8F to write C0XX).
 	;; - quint: expected current $d17b and fe1f, then d17b in bank1, d17b in bank 2, and fe1f
-	!byte $8, $ff		; Read $C088 (RAM read, write protected)
-	!byte $55, $55, $55, $AA, $55
+	;; (All sequences start with lda $C080, just to reset things to a known state.)
+	!byte $8, $ff				; Read $C088 (RAM read, write protected)
+	!byte $55, $55, $55, $AA, $55		;
+	!byte $1, $1, $ff			; Read $C081, $C081 (read ROM, write RAM bank 2)
+	!byte $53, $60, $55, $54, $61		;
+	!byte $b, $b, $ff			; Read $C08B, $C08B (read/write RAM bank 1)
+	!byte $56, $56, $56, $AA, $56		;
+	!byte $b, $8b, $b, $ff			; Read $C08B, write $C08B, read $C08B (read RAM bank 1, no write)
+	!byte $55, $55, $55, $AA, $55		;
 	!byte $ff
 
 	nop			; Provide clean break after data when viewing disassembly
