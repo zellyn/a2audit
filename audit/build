@@ -32,3 +32,5 @@ grep -h '+prerra\? .*;;' *.asm | awk -F' ;; ' '{print $2}' | sort | sed 's|\(E..
 [[ "${1-}" == '2p-d' ]] && mame -rompath $ROMPATH apple2p -flop1 ./audit.dsk -skip_gameinfo -debug
 [[ "${1-}" == '2-d' ]] && mame -rompath $ROMPATH apple2 -flop1 ./audit.dsk -skip_gameinfo -debug
 
+true # Signal success (since we had a bunch of conditionals that can return false status).
+
