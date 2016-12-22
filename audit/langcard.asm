@@ -9,7 +9,7 @@
 	+print
 	!text "48K:SKIPPING LANGUAGE CARD TEST",$8D
 	+printed
-	beq .done2
+	beq .jdone
 	;; Setup - store differing values in bank first and second banked areas.
 +	lda $C08B		; Read and write bank 1
 	lda $C08B
@@ -20,15 +20,15 @@
 	+prerr $0003 ;; E0003: We tried to put the language card into read bank 1, write bank 1, but failed to write.
 	!text "CANNOT WRITE TO LC BANK 1 RAM"
 	+prerred
-	beq .done2
+	beq .jdone
 	lda #$33
 +	sta $FE1F		; FE1F is $60 in Apple II/plus/e/enhanced
 	cmp $FE1F
-	beq +
+	beq .dotest
 	+prerr $0004 ;; E0004: We tried to put the language card into read RAM, write RAM, but failed to write.
 	!text "CANNOT WRITE TO LC RAM"
 	+prerred
-	beq .done2
+	beq .jdone
 +	lda $C083		; Read and write bank 2
 	lda $C083
 	lda #$22
@@ -38,180 +38,11 @@
 	+prerr $0005 ;; E0005: We tried to put the language card into read bank 2, write bank 2, but failed to write.
 	!text "CANNOT WRITE TO LC BANK 2 RAM"
 	+prerred
-	beq .done2
+.jdone	jmp .done
 
-	;; Test that we're reading the right things
-	
-+	lda $C088		; RAM read, bank 1, write disabled
-	lda $D17B
-	cmp #$11
-	beq ++
-	cmp #$22
-	bne +
-	+prerr $0006 ;; E0006: Read $C088 (read bank 1), but the language card is still reading bank 2.
-	!text "$C088: BANK 2 ACTIVE"
-	+prerred
-	beq .done2
-+	cmp #$53
-	bne +
-	+prerr $0007 ;; E0007: Read $C088 (read bank 1), but the language card is reading ROM.
-	!text "$C088: ROM ACTIVE"
-	+prerred
-	beq .done2
-+	+prerra $0008 ;; E0008: Read $C088 (read bank 1), but the check byte ($D17B) is an unknown value.
-	!text "$C088: UNKNOWN BYTE"
-	+prerred
-.done2	beq .done3
-++	inc $D17B
-	eor $D17B
-	beq +
-	+prerr $0009 ;; E0009: Read $C088 (read bank 1, write-protected), but successfully wrote byte ($D17B).
-	!text "$C088: ALLOWED WRITE"
-	+prerred
-	beq .done3
-
-+	lda $C080		; RAM read, bank 2, write disabled
-	lda $D17B
-	cmp #$22
-	beq ++
-	cmp #$11
-	bne +
-	+prerr $000A ;; E000A: Read $C080 (read bank 2), but the language card is still reading bank 1.
-	!text "$C080: BANK 1 ACTIVE"
-	+prerred
-	beq .done3
-+	cmp #$53
-	bne +
-	+prerr $000B ;; E000B: Read $C080 (read bank 2), but the language card is reading ROM.
-	!text "$C080: ROM ACTIVE"
-	+prerred
-	beq .done3
-+	+prerra $000C ;; E000C: Read $C080 (read bank 2), but the check byte ($D17B) is an unknown value.
-	!text "$C080: UNKNOWN BYTE"
-	+prerred
-	beq .done3
-++	inc $D17B
-	eor $D17B
-	beq +
-	+prerr $000D ;; E000D: Read $C080 (read bank 2, write-protected), but successfully wrote byte ($D17B).
-	!text "$C080: ALLOWED WRITE"
-	+prerred
-	beq .done3
-
-+	lda $C081		; ROM read, bank 2 no write
-	lda $D17B
-	cmp #$53
-	beq ++
-	cmp #$11
-	bne +
-	+prerr $000E ;; E000E: Read $C081 (read ROM), but the language card is still reading bank 1.
-	!text "$C081: BANK 1 ACTIVE"
-	+prerred
-	beq .done3
-+	cmp #$22
-	bne +
-	+prerr $000F ;; E000F: Read $C081 (read ROM), but the language card is reading bank 2.
-	!text "$C081: BANK 1 ACTIVE"
-	+prerred
-	beq .done3
-+	+prerra $0010 ;; E0010: Read $C081 (read ROM), but the check byte ($D17B) is an unknown value.
-	!text "$C081: UNKNOWN BYTE"
-	+prerred
-.done3	beq .done4
-++	dec $D17B
-	eor $D17B
-	beq +
-	+prerr $0011 ;; E0011: Read $C081 (read ROM), but successfully modified byte ($D17B).
-	!text "$C081: ALLOWED WRITE"
-	+prerred
-	beq .done4
-
-+	lda $C089		; ROM read, bank 1 write
-	lda $D17B
-	cmp #$53
-	beq ++
-	cmp #$11
-	bne +
-	+prerr $0012 ;; E0012: Read $C089 (read ROM), but the language card is still reading bank 1.
-	!text "$C089: BANK 1 ACTIVE"
-	+prerred
-	beq .done4
-+	cmp #$22
-	bne +
-	+prerr $0013 ;; E0013: Read $C089 (read ROM), but the language card is reading bank 2.
-	!text "$C089: BANK 1 ACTIVE"
-	+prerred
-	beq .done4
-+	+prerra $0014 ;; E0014: Read $C089 (read ROM), but the check byte ($D17B) is an unknown value.
-	!text "$C089: UNKNOWN BYTE"
-	+prerred
-	beq .done4
-++	inc $D17B		; bank 1 now holds $54 instead of $11
-	eor $D17B
-	beq +
-	+prerr $0015 ;; E0015: Read $C089 (read ROM), but successfully modified byte ($D17B).
-	!text "$C089: ALLOWED WRITE"
-	+prerred
-	beq .done4
-
-+	lda $C08B		; RAM read, bank 1
-	lda $D17B
-	cmp #$54
-	beq ++
-	cmp #$22
-	bne +
-	+prerr $0016 ;; E0016: Read $C08B (read bank 1), but the language card is still reading bank 2.
-	!text "$C08B: BANK 2 ACTIVE"
-	+prerred
-	beq .done4
-+	cmp #$53
-	bne +
-	+prerr $0017 ;; E0017: Read $C08B (read bank 1), but the language card is reading ROM.
-	!text "$C08B: ROM ACTIVE"
-	+prerred
-	beq .done4
-+	cmp #$11
-	bne +
-	+prerr $0018 ;; E0018: Read $C08B (read bank 1); byte should have been previously incremented from ROM ($53) to $54 because of lda $C089 after previous lda $C081.
-	!text "$C08B: PREVIOUS WRITE FAILED"
-	+prerred
-.done4	beq .done5
-+	+prerra $0019 ;; E0019: Read $C08B (read bank 1), but the check byte ($D17B) is an unknown value.
-	!text "$C08B: UNKNOWN BYTE"
-	+prerred
-	beq .done5
-++
-
-+	lda $C083		; RAM read, bank 2
-	lda $D17B
-	cmp #$22
-	beq ++
-	cmp #$54
-	bne +
-	+prerr $001A ;; E001A: Read $C083 (read bank 2), but the language card is still reading bank 1.
-	!text "$C083: BANK 1 ACTIVE"
-	+prerred
-	beq .done5
-+	cmp #$53
-	bne +
-	+prerr $001B ;; E001B: Read $C083 (read bank 2), but the language card is reading ROM.
-	!text "$C083: ROM ACTIVE"
-	+prerred
-	beq .done5
-+	cmp #$52
-	bne +
-	+prerr $001C ;; E001C: Read $C083 (read bank 2); byte should have been previously NOT been writable to be decremented from ROM ($53) to $52 because of single lda $C081 after previous lda $C080.
-	!text "$C083: PREVIOUS WRITE SUCCEEDED"
-	+prerred
-	beq .done5
-+	+prerra $001D ;; E001D: Read $C083 (read bank 2), but the check byte ($D17B) is an unknown value.
-	!text "$C083: UNKNOWN BYTE"
-	+prerred
-.done5	jmp .done
-++
 	;; Parameterized tests
 
-	lda #<.tests
+.dotest	lda #<.tests
 	sta 0
 	lda #>.tests
 	sta 1
@@ -375,8 +206,9 @@
 
 	lda ($0),y		; Done with the parameterized tests?
 	cmp #$ff
-	beq .over
-	clc
+	bne +
+	jmp .over
++	clc
 	tya
 	adc $0
 	sta $0
@@ -385,10 +217,10 @@
 +	jmp .outer
 
 .datatesturl
-	+prerr $001E ;; E001E: We initialized $D17B in RAM bank 1 to $11, $D17B in RAM bank 2 to $22, and $FE1F in RAM to $33. Then, we perform a testdata-driven sequence of LDA and STA to the $C08X range. Finally we (try to) increment $D17B and $FE1F. Then we test (a) the current live value in $D17B, (b) the current live value in $FE1F, (c) the RAM bank 1 value of $D17B, (d) the RAM bank 2 value of $D17B, and (e) the RAM value of $FE1F, to see whether they match expected values. $D17B is usually $53 in ROM, and $FE1F is usally $60. For more information on the operation of the language card soft-switches, see Understanding the Apple IIe, by James Fielding Sather, Pg 5-24.
+	+prerr $0006 ;; E0006: This is a data-driven test of Language Card operation. We initialize $D17B in RAM bank 1 to $11, $D17B in RAM bank 2 to $22, and $FE1F in RAM to $33. Then, we perform a testdata-driven sequence of LDA and STA to the $C08X range. Finally we (try to) increment $D17B and $FE1F. Then we test (a) the current live value in $D17B, (b) the current live value in $FE1F, (c) the RAM bank 1 value of $D17B, (d) the RAM bank 2 value of $D17B, and (e) the RAM value of $FE1F, to see whether they match expected values. $D17B is usually $53 in ROM, and $FE1F is usally $60. For more information on the operation of the language card soft-switches, see Understanding the Apple IIe, by James Fielding Sather, Pg 5-24.
 	!text "DATA-DRIVEN TEST FAILED"
 	+prerred
-	beq .done
+	jmp .done
 	
 .printseq
 	tya
@@ -435,8 +267,18 @@
 	;; (All sequences start with lda $C080, just to reset things to a known state.)
 	!byte $08, $ff				; Read $C088 (RAM read, write protected)
 	!byte $11, $33, $11, $22, $33		;
+	!byte $00, $ff				; Read $C080 (read bank 2, write disabled)
+	!byte $22, $33, $11, $22, $33		;
+	!byte $01, $ff				; Read $C081 (ROM read, write disabled)
+	!byte $53, $60, $11, $22, $33		;
+	!byte $01, $09, $ff			; Read $C081, $C089 (ROM read, bank 1 write)
+	!byte $53, $60, $54, $22, $61		;
 	!byte $01, $01, $ff			; Read $C081, $C081 (read ROM, write RAM bank 2)
 	!byte $53, $60, $11, $54, $61		;
+	!byte $0b, $ff				; Read $C08B (read RAM bank 1, no write)
+	!byte $11, $33, $11, $22, $33		;
+	!byte $03, $ff				; Read $C083 (read RAM bank 2, no write)
+	!byte $22, $33, $11, $22, $33		;
 	!byte $0b, $0b, $ff			; Read $C08B, $C08B (read/write RAM bank 1)
 	!byte $12, $34, $12, $22, $34		;
 	!byte $07, $0D, $ff			; Read $C087, read $C08D (read ROM, write bank 1)
