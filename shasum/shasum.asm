@@ -1,6 +1,9 @@
-	!to "shasum.o", plain
-	* = $6000
-	jmp main
+;;; SHA-1 implementation in 6502 assembly.
+;;; A straightforward implementation of:
+;;; https://en.wikipedia.org/wiki/SHA-1#SHA-1_pseudocode
+;;; Copyright © 2016 Zellyn Hunter <zellyn@gmail.com>
+
+	!zone shasum {
 
 	;; clear addresses:
 	;; (http://apple2.org.za/gswv/a2zine/faqs/csa2pfaq.html#017)
@@ -10,42 +13,15 @@
 
 	!addr	SRC = $06
 	!addr	DST = $08
-	!addr   INPUT = $eb
-	!addr   LENGTH = $ee
-	!addr   TMP1 = $fa
-	!addr   TMP2 = $fb
+	!addr   SHAINPUT = $eb
+	!addr   SHALENGTH = $ee
+	!addr   .tmp1 = $fa
+	!addr   .tmp2 = $fb
 
 	!addr PRBYTE = $FDDA
 	!addr COUT = $FDED
 
-h0:	!32 0			; return value (hash)
-h1:	!32 0
-h2:	!32 0
-h3:	!32 0
-h4:	!32 0
-h5:
-ml:	!32 0, 0		; message length
-w:	!fill 64, 0
-w_next:	!fill 64, 0
-a:	!32 0
-b:	!32 0
-c:	!32 0
-d:	!32 0
-e:	!32 0
-f:	!32 0
-temp:	!32 0
-k:	!32 0
-kh0:	!be32 $67452301		; initial values for h0..h4
-kh1:	!be32 $EFCDAB89
-kh2:	!be32 $98BADCFE
-kh3:	!be32 $10325476
-kh4:	!be32 $C3D2E1F0
-k1 = $5A827999		; k constants
-k2 = $6ED9EBA1
-k3 = $8F1BBCDC
-k4 = $CA62C1D6
-
-	!macro set32 .target, .value {
+	!macro .set32 .target, .value {
 	lda #<(.value >> 24)
 	sta .target
 	lda #<(.value >> 16)
@@ -56,149 +32,73 @@ k4 = $CA62C1D6
 	sta .target+3
 	}
 
-	!macro setSRC .source {
+	!macro .setSRC .source {
 	lda #<.source
 	sta SRC
 	lda #>.source
 	sta SRC+1
 	}
-	!macro setDST .dest {
+	!macro .setDST .dest {
 	lda #<.dest
 	sta DST
 	lda #>.dest
 	sta DST+1
 	}
 
-;;; Print a string of bytes, as hex.
-;;; Address in SRC, count in A.
-;;; Burns A,Y.
-prbytes:
-	ldy #0
--	pha
-	lda (SRC),y
-	jsr PRBYTE
-	iny
-	pla
-	adc #$ff
-	bne -
-	rts
 
-main:
-	;; Test shasum ""
-	lda #0
-	sta INPUT
-	lda #$fe
-	sta INPUT+1
-	lda #0
-	sta LENGTH+1
-	lda #0			; da39a3ee5e6b4b0d3255bfef95601890afd80709
-	sta LENGTH
-	jsr shasum
+	!align 255, 0		; align data area to page boundary
+SHA:
+SHALEN = 20
+.h0:	!32 0			; return value (hash)
+.h1:	!32 0
+.h2:	!32 0
+.h3:	!32 0
+.h4:	!32 0
+.h5:
+.ml:	!32 0, 0		; message length
+.w:	!fill 64, 0
+.w_next:	!fill 64, 0
+.a:	!32 0
+.b:	!32 0
+.c:	!32 0
+.d:	!32 0
+.e:	!32 0
+.f:	!32 0
+.temp:	!32 0
+.k:	!32 0
+.kh0:	!be32 $67452301		; initial values for h0..h4
+.kh1:	!be32 $EFCDAB89
+.kh2:	!be32 $98BADCFE
+.kh3:	!be32 $10325476
+.kh4:	!be32 $C3D2E1F0
+.k1 = $5A827999		; k constants
+.k2 = $6ED9EBA1
+.k3 = $8F1BBCDC
+.k4 = $CA62C1D6
 
-	; lda #$8d
-	; jsr COUT
-
-	+setSRC h0
-	lda #(h5-h0)
-	jsr prbytes
-
-	;; Test shasum FE00[:0x37]
-	lda #0
-	sta INPUT
-	lda #$fe
-	sta INPUT+1
-	lda #0
-	sta LENGTH+1
-	lda #$37		; 1CF73FC6156B548A949D315120B5256245EAA33E
-	sta LENGTH
-	jsr shasum
-
-	; lda #$8d
-	; jsr COUT
-
-	+setSRC h0
-	lda #(h5-h0)
-	jsr prbytes
-	
-	;; Test shasum FE00[:0x100]
-	lda #0
-	sta INPUT
-	lda #$fe
-	sta INPUT+1
-	lda #1
-	sta LENGTH+1
-	lda #0		; 7B3D05347B52210065E27054FDFD0B8B699F0965
-	sta LENGTH
-	jsr shasum
-
-	; lda #$8d
-	; jsr COUT
-
-	+setSRC h0
-	lda #(h5-h0)
-	jsr prbytes
-	
-	;; Test shasum FE00[:0x1ff]
-	lda #0
-	sta INPUT
-	lda #$fe
-	sta INPUT+1
-	lda #$1
-	sta LENGTH+1
-	lda #$ff		; 269CA6B0C644DAC01D908B20C10C0D5B19C52ABF
-	sta LENGTH
-	jsr shasum
-
-	; lda #$8d
-	; jsr COUT
-
-	+setSRC h0
-	lda #(h5-h0)
-	jsr prbytes
-	
-	;; Test shasum FE00[:0x200]
-	lda #0
-	sta INPUT
-	lda #$fe
-	sta INPUT+1
-	lda #2
-	sta LENGTH+1
-	lda #0		; D5AC71D5EE76E31CC82CF5136151BF4CDA503601
-	sta LENGTH
-	jsr shasum
-
-	; lda #$8d
-	; jsr COUT
-
-	+setSRC h0
-	lda #(h5-h0)
-	jsr prbytes
-	
-	rts
-
-shasum:
+SHASUM:
 	;; Initialize h0..h4
-	ldy #(h5-h0-1)
--	lda kh0,y
-	sta h0,y
+	ldy #(.h5-.h0-1)
+-	lda .kh0,y
+	sta .h0,y
 	dey
 	bpl -
-	;; Initialize message length (ml)
+	;; Initialize message length (.ml)
 	lda #0
 	ldy #4
--	sta ml, y
+-	sta .ml, y
 	dey
 	bpl -
-	lda LENGTH
-	sta ml+7
-	lda LENGTH+1
-	sta ml+6
+	lda SHALENGTH
+	sta .ml+7
+	lda SHALENGTH+1
+	sta .ml+6
 
 	;; Message length is in bits
 	ldy #3
--	asl ml+7
-	rol ml+6
-	rol ml+5
+-	asl .ml+7
+	rol .ml+6
+	rol .ml+5
 	dey
 	bne -
 
@@ -206,19 +106,19 @@ shasum:
 	;; ldy #0			; already zero
 
 	;; Invert length so we can inc instead of dec
-	lda LENGTH
+	lda SHALENGTH
 	sec
 	lda #0
-	sbc LENGTH
-	sta LENGTH
+	sbc SHALENGTH
+	sta SHALENGTH
 	lda #0
-	sbc LENGTH+1
-	sta LENGTH+1
-	ora LENGTH
+	sbc SHALENGTH+1
+	sta SHALENGTH+1
+	ora SHALENGTH
 	beq .msgdone
 
-.loop	lda (INPUT),y
-	sta w,y
+.loop	lda (SHAINPUT),y
+	sta .w,y
 	iny
 	cpy #$40
 	bne +
@@ -228,20 +128,20 @@ shasum:
 	ldy #0
 
 	clc
-	lda INPUT
+	lda SHAINPUT
 	adc #$40
-	sta INPUT
+	sta SHAINPUT
 	bcc +
-	inc INPUT+1
+	inc SHAINPUT+1
 
-+	inc LENGTH
++	inc SHALENGTH
 	bne .loop
-	inc LENGTH+1
+	inc SHALENGTH+1
 	bne .loop
 
 .msgdone:
 	lda #$80
-	sta w,y
+	sta .w,y
 	iny
 	cpy #$40
 	bne .zeros
@@ -252,7 +152,7 @@ shasum:
 	cpy #$38
 	beq .length
 	lda #0
-	sta w,y
+	sta .w,y
 	iny
 	cpy #$40
 	bne .zeros
@@ -261,27 +161,27 @@ shasum:
 	jmp .zeros
 .length
 	ldy #7
--	lda ml,y
-	sta w+$38,y
+-	lda .ml,y
+	sta .w+$38,y
 	dey
 	bpl -
 	jsr do_chunk
 	rts
 
-;;; do_chunk processes a chunk of input. It burns A,X,Y,TMP1,TMP2.
+;;; do_chunk processes a chunk of input. It burns A,X,Y,.tmp1,.tmp2.
 do_chunk:
 	;; Copy a..e from h0..h4
 
-	ldy #(f-a-1)
--	lda h0,y
-	sta a,y
+	ldy #(.f-.a-1)
+-	lda .h0,y
+	sta .a,y
 	dey
 	bpl -
 
 	ldy #0			; y is index into w
 
 	;; First 20: k1
-	+set32 k, k1
+	+.set32 .k, .k1
 
 	ldx #16
 -	jsr kind1
@@ -293,7 +193,7 @@ do_chunk:
 	dex
 	bne -
 	;; Second 20: k2
-	+set32 k, k2
+	+.set32 .k, .k2
 
 	ldx #12
 -	jsr kind2
@@ -306,7 +206,7 @@ do_chunk:
 	bne -
 
 	;; Third 20: k3
-	+set32 k, k3
+	+.set32 .k, .k3
 
 	ldx #8
 -	jsr kind3
@@ -319,7 +219,7 @@ do_chunk:
 	bne -
 
 	;; Fourth 20: k4
-	+set32 k, k4
+	+.set32 .k, .k4
 
 	ldx #4
 -	jsr kind2
@@ -331,8 +231,8 @@ do_chunk:
 	dex
 	bne -
 
-	+setSRC a
-	+setDST h0
+	+.setSRC .a
+	+.setDST .h0
 	ldx #5
 -	jsr add32
 	clc
@@ -347,57 +247,57 @@ do_chunk:
 	rts
 
 kind1:
-	sty TMP1
-	stx TMP2
+	sty .tmp1
+	stx .tmp2
 	;; f = d xor (b and (c xor d))
-	+setDST f
-	+setSRC d
+	+.setDST .f
+	+.setSRC .d
 	jsr cp32
-	+setSRC c
+	+.setSRC .c
 	jsr xor32
-	+setSRC b
+	+.setSRC .b
 	jsr and32
-	+setSRC d
+	+.setSRC .d
 	jsr xor32
 
 	jmp common
 kind2:
-	sty TMP1
-	stx TMP2
+	sty .tmp1
+	stx .tmp2
 	;; f = b xor c xor d
-	+setDST f
-	+setSRC d
+	+.setDST .f
+	+.setSRC .d
 	jsr cp32
-	+setSRC c
+	+.setSRC .c
 	jsr xor32
-	+setSRC b
+	+.setSRC .b
 	jsr xor32
 
 	jmp common
 kind3:
-	sty TMP1
-	stx TMP2
+	sty .tmp1
+	stx .tmp2
 	;; f = (b and c) or (d and (b or c))
-	+setSRC c
-	+setDST f
+	+.setSRC .c
+	+.setDST .f
 	jsr cp32
-	+setDST temp
+	+.setDST .temp
 	jsr cp32
-	+setSRC b
+	+.setSRC .b
 	jsr and32
-	+setDST f
+	+.setDST .f
 	jsr or32
-	+setSRC d
+	+.setSRC .d
 	jsr and32
-	+setSRC temp
+	+.setSRC .temp
 	jsr or32
 	; jmp common
 
 common:
 
         ;; temp = (a leftrotate 5) + f + e + k + w[i]
-	+setDST temp
-	+setSRC a
+	+.setDST .temp
+	+.setSRC .a
 	jsr cp32
 	jsr rol8
 
@@ -405,53 +305,53 @@ common:
 	jsr ror1
 	jsr ror1
 
-	+setSRC f
+	+.setSRC .f
 	jsr add32
-	+setSRC e
+	+.setSRC .e
 	jsr add32
-	+setSRC k
+	+.setSRC .k
 	jsr add32
 
-	;; !setSRC w[i], and call add32
-	ldy TMP1
+	;; !.setSRC w[i], and call add32
+	ldy .tmp1
 	clc
 	tya
-	adc #<w
+	adc #<.w
 	sta SRC
 	lda #0
-	adc #>w
+	adc #>.w
 	sta SRC+1
 	jsr add32
 
         ;; e = d
-	+setSRC d
-	+setDST e
+	+.setSRC .d
+	+.setDST .e
 	jsr cp32
 
         ;; d = c
-	+setSRC c
-	+setDST d
+	+.setSRC .c
+	+.setDST .d
 	jsr cp32
 
         ;; c = b leftrotate 30
-	+setSRC b
-	+setDST c
+	+.setSRC .b
+	+.setDST .c
 	jsr cp32
 	jsr ror1
 	jsr ror1
 
         ;; b = a
-	+setSRC a
-	+setDST b
+	+.setSRC .a
+	+.setDST .b
 	jsr cp32
 
         ;; a = temp
-	+setSRC temp
-	+setDST a
+	+.setSRC .temp
+	+.setDST .a
 	jsr cp32
 
-	ldy TMP1
-	ldx TMP2
+	ldy .tmp1
+	ldx .tmp2
 	iny
 	iny
 	iny
@@ -460,8 +360,8 @@ common:
 
 	;; Replace w[i:i+16] with w[i+16:i+32]. Burns a. Sets y=0.
 fill:
-	+setDST w_next
-	+setSRC w
+	+.setDST .w_next
+	+.setSRC .w
 	ldx #0x10
 
 -	sec
@@ -491,9 +391,9 @@ fill:
 	dex
 	bne -
 
-	ldx #w_next-w-1
--	lda w_next,x
-	sta w,x
+	ldx #.w_next-.w-1
+-	lda .w_next,x
+	sta .w,x
 	dex
 	bpl -
 
@@ -599,19 +499,4 @@ rol8:
 	txa
 	sta (DST),y
 	rts
-
-	!eof
-TODOs
-[X] Routine to print n hex bytes (address, length (byte))
-[X] Routine to get the next 16 values (64 bytes) of input
-[X] Routine to get w[i] one i at a time, and rebuild next 16 values
-
-Needed arithmetic routines for sha1sum:
-- [X] add32
-- [X] and32
-- [X] or32
-- [X] xor32
-- [X] ROL1
-- [X] ROR1
-- [X] ROL5  --> ROL8, (ROR1,ROR1,ROR1)
-- [X] ROL30 --> (ROR1,ROR1)
+} ;shasum

@@ -27,9 +27,12 @@ main:
 	!src "detect.asm"
 
 	;; Language card tests.
-	!src "langcard.asm"
+	jsr LANGCARDTESTS
 	
 end:	jmp *
+
+	!src "langcard.asm"
+	!src "shasumtests.asm"
 
 print
 	lda $C081
@@ -77,7 +80,8 @@ getche	lda $FEED		; FEED gets modified
 	jsr PRNTYX
 rts
 	!src "technote2.asm"
-
+	!src "../shasum/shasum.asm"
+	
 ;	!if * != STRINGS {
 ;	!error "Expected STRINGS to be ", *
 ;	}
