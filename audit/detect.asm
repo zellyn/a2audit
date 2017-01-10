@@ -85,7 +85,7 @@
 	!text "PLAIN APPLE II",$8D
 	+printed
 	beq .done
-.iiplus	
+.iiplus
 	+print
 	!text "APPLE II PLUS",$8D
 	+printed
