@@ -17,7 +17,7 @@ AUXMEMTESTS
 	sta $D17B		; $D17B is $53 in Apple II/plus/e/enhanced
 	cmp $D17B
 	beq +
-	+prerr $0007 ;; E0007: We tried to put the language card into read bank 1, write bank 1, but failed to write.
+	+prerr $0000 ;; E0000: We tried to put the language card into read bank 1, write bank 1, but failed to write.
 	!text "CANNOT WRITE TO LC BANK 1 RAM"
 	+prerred
 	rts
@@ -25,7 +25,7 @@ AUXMEMTESTS
 +	sta $FE1F		; FE1F is $60 in Apple II/plus/e/enhanced
 	cmp $FE1F
 	beq .dotest
-	+prerr $0008 ;; E0008: We tried to put the language card into read RAM, write RAM, but failed to write.
+	+prerr $0000 ;; E0000: We tried to put the language card into read RAM, write RAM, but failed to write.
 	!text "CANNOT WRITE TO LC RAM"
 	+prerred
 	rts
@@ -35,7 +35,7 @@ AUXMEMTESTS
 	sta $D17B
 	cmp $D17B
 	beq +
-	+prerr $0009 ;; E0009: We tried to put the language card into read bank 2, write bank 2, but failed to write.
+	+prerr $0000 ;; E0000: We tried to put the language card into read bank 2, write bank 2, but failed to write.
 	!text "CANNOT WRITE TO LC BANK 2 RAM"
 	+prerred
 	rts
@@ -217,7 +217,7 @@ AUXMEMTESTS
 +	jmp .outer
 
 .datatesturl
-	+prerr $000A ;; E000A: This is a data-driven test of Language Card operation. We initialize $D17B in RAM bank 1 to $11, $D17B in RAM bank 2 to $22, and $FE1F in RAM to $33. Then, we perform a testdata-driven sequence of LDA and STA to the $C08X range. Finally we (try to) increment $D17B and $FE1F. Then we test (a) the current live value in $D17B, (b) the current live value in $FE1F, (c) the RAM bank 1 value of $D17B, (d) the RAM bank 2 value of $D17B, and (e) the RAM value of $FE1F, to see whether they match expected values. $D17B is usually $53 in ROM, and $FE1F is usally $60. For more information on the operation of the language card soft-switches, see Understanding the Apple IIe, by James Fielding Sather, Pg 5-24.
+	+prerr $0000 ;; E0000: This is a data-driven test of Language Card operation. We initialize $D17B in RAM bank 1 to $11, $D17B in RAM bank 2 to $22, and $FE1F in RAM to $33. Then, we perform a testdata-driven sequence of LDA and STA to the $C08X range. Finally we (try to) increment $D17B and $FE1F. Then we test (a) the current live value in $D17B, (b) the current live value in $FE1F, (c) the RAM bank 1 value of $D17B, (d) the RAM bank 2 value of $D17B, and (e) the RAM value of $FE1F, to see whether they match expected values. $D17B is usually $53 in ROM, and $FE1F is usally $60. For more information on the operation of the language card soft-switches, see Understanding the Apple IIe, by James Fielding Sather, Pg 5-24.
 	!text "DATA-DRIVEN TEST FAILED"
 	+prerred
 	rts
@@ -300,4 +300,4 @@ AUXMEMTESTS
 	+printed
 .done
 	rts
-	} ;auxmem
+} ;auxmem

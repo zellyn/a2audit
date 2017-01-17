@@ -4,9 +4,36 @@
 	!convtab <apple ii/convtab.bin>
 	!to "audit.o", plain
 	* = $6000
+	START = *
 
+	;; Zero-page locations.
 	CSW = $36
 	KSW = $38
+
+	;; Softswitch locations.
+	_80STORE_ONW = $C000
+	_80STORE_OFFW = $C001
+	_80STORE_READ = $C018
+	RAMRD_ONW = $C002
+	RAMRD_OFFW = $C003
+	RAMRD_READ = $C013
+	RAMWRT_ONW = $C004
+	RAMWRT_OFFW = $C005
+	RAMWRT_READ = $C014
+	INTCXROM_ONW = $C006
+	INTCXROM_OFFW = $C007
+	INTCXROM_READ = $C015
+	ALTZP_ONW = $C008
+	ALTZP_OFFW = $C009
+	ALTZP_READ = $C016
+	SLOTC3ROM_ONW = $C00A
+	SLOTC3ROM_OFFW = $C00B
+	SLOTC3ROM_READ = $C017
+	SLOTRESET = $CFFF
+
+	;; CXXX utility routine locations
+	AUXMOVE = $C311
+	;; Monitor locations.
 	HOME = $FC58
 	COUT = $FDED
 	COUT1 = $FDF0
@@ -22,6 +49,10 @@
 	!src "macros.asm"
 
 main:
+	;; Initialize stack to the top.
+	ldx $ff
+	txs
+	
 	jsr standard_fixup
 
 	jsr HOME
@@ -46,6 +77,7 @@ end:	jmp *
 	!src "langcard.asm"
 	!src "auxmem.asm"
 	!src "shasumtests.asm"
+	!src "resetall.asm"
 
 print
 	lda $C081
@@ -112,14 +144,6 @@ rts
 	!src "technote2.asm"
 	!src "../shasum/shasum.asm"
 
-;	!if * != STRINGS {
-;	!error "Expected STRINGS to be ", *
-;	}
-
-	!if * > STRINGS {
-	!error "End of compilation passed STRINGS:", *
-	}
-
 ;;; If we loaded via standard delivery, turn the motor off and fix up
 ;;; CSW and KSW (in case the user typed PR#6 or IN#6 to boot).
 standard_fixup:
@@ -148,3 +172,28 @@ standard_fixup:
 	lda #>KEYIN
 	sta KSW+1
 +	rts
+
+COPYTOAUX
+	;; Use AUXMOVE routine to copy the whole program to AUX memory.
+	sta SLOTC3ROM_OFFW
+	lda #<START
+	sta $3C
+	sta $42
+	lda #>START
+	sta $3D
+	sta $43
+	lda #<(STRINGS-1)
+	sta $3E
+	lda #>(STRINGS-1)
+	sta $3F
+	sec			; Move from main to aux memory.
+	jsr AUXMOVE
+	rts
+	
+;	!if * != STRINGS {
+;	!error "Expected STRINGS to be ", *
+;	}
+
+	!if * > STRINGS {
+	!error "End of compilation passed STRINGS:", *
+	}

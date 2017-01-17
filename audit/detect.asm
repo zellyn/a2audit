@@ -70,7 +70,18 @@
 	+printed
 +	lda #$8D
 	jsr COUT
-	beq .done
+
+;;; Error out if RAMRD or RAMWRT are set.
+	lda $C013
+	ora $C014
+	bmi +
+	jsr COPYTOAUX
+	jmp .done
+
++	+prerr $0003 ;; E0003: Soft-switched for either RAMRD or RAMWRT read as set, which means we're either reading from, or writing to, auxiliary RAM. Please press RESET and run the test again to start in a known-good state.
+	!text "RAMRD OR RAMWRT SET:RESET AND RERUN"
+	+prerred
+	jmp end
 .leiii
 	cmp #IIplus
 	bcc .iiplain
