@@ -10,24 +10,42 @@
 	CSW = $36
 	KSW = $38
 
+	LCRESULT = $10
+	LCRESULT2 = $11
+	AUXRESULT = $12
+
+	;; AUXMOVE locations
+	;; $3C
+	;; $3D
+	;; $3E
+	;; $3F
+	;; $42
+	;; $43
+
+	;; SHASUM locations
+	!addr	SRC = $06
+	!addr	DST = $08
+	!addr   SHAINPUT = $eb
+	!addr   SHALENGTH = $ee
+	
 	;; Softswitch locations.
-	_80STORE_ONW = $C000
-	_80STORE_OFFW = $C001
+	_80STORE_OFF_W = $C000
+	_80STORE_ON_W = $C001
 	_80STORE_READ = $C018
-	RAMRD_ONW = $C002
-	RAMRD_OFFW = $C003
+	RAMRD_OFF_W = $C002
+	RAMRD_ON_W = $C003
 	RAMRD_READ = $C013
-	RAMWRT_ONW = $C004
-	RAMWRT_OFFW = $C005
+	RAMWRT_OFF_W = $C004
+	RAMWRT_ON_W = $C005
 	RAMWRT_READ = $C014
-	INTCXROM_ONW = $C006
-	INTCXROM_OFFW = $C007
+	INTCXROM_OFF_W = $C006
+	INTCXROM_ON_W = $C007
 	INTCXROM_READ = $C015
-	ALTZP_ONW = $C008
-	ALTZP_OFFW = $C009
+	ALTZP_OFF_W = $C008
+	ALTZP_ON_W = $C009
 	ALTZP_READ = $C016
-	SLOTC3ROM_ONW = $C00A
-	SLOTC3ROM_OFFW = $C00B
+	SLOTC3ROM_OFF_W = $C00A
+	SLOTC3ROM_ON_W = $C00B
 	SLOTC3ROM_READ = $C017
 	SLOTRESET = $CFFF
 
@@ -72,11 +90,15 @@ main:
 	;; ROM SHA-1 checks.
 	;; jsr SHASUMTESTS - do this later, because it's SLOW!
 
-end:	jmp *
+end:
+	+print
+	!text "END"
+	+printed
+	jmp *
 
 	!src "langcard.asm"
 	!src "auxmem.asm"
-	!src "shasumtests.asm"
+	;!src "shasumtests.asm"
 	!src "resetall.asm"
 
 print
@@ -142,7 +164,7 @@ getche	lda $FEED		; FEED gets modified
 	jsr COUT
 rts
 	!src "technote2.asm"
-	!src "../shasum/shasum.asm"
+	;!src "../shasum/shasum.asm"
 
 ;;; If we loaded via standard delivery, turn the motor off and fix up
 ;;; CSW and KSW (in case the user typed PR#6 or IN#6 to boot).
@@ -175,16 +197,16 @@ standard_fixup:
 
 COPYTOAUX
 	;; Use AUXMOVE routine to copy the whole program to AUX memory.
-	sta SLOTC3ROM_OFFW
+	sta SLOTC3ROM_OFF_W
 	lda #<START
 	sta $3C
 	sta $42
 	lda #>START
 	sta $3D
 	sta $43
-	lda #<(STRINGS-1)
+	lda #<(LASTSTRING-1)
 	sta $3E
-	lda #>(STRINGS-1)
+	lda #>(LASTSTRING-1)
 	sta $3F
 	sec			; Move from main to aux memory.
 	jsr AUXMOVE

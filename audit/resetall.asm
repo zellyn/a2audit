@@ -11,12 +11,12 @@ RESETALL
 	tay
 	pla
 
-	sta _80STORE_OFFW
-	sta RAMRD_OFFW
-	sta RAMWRT_OFFW
-	sta INTCXROM_OFFW
-	sta ALTZP_OFFW
-	sta SLOTC3ROM_OFFW
+	sta _80STORE_OFF_W
+	sta RAMRD_OFF_W
+	sta RAMWRT_OFF_W
+	sta INTCXROM_OFF_W
+	sta ALTZP_OFF_W
+	sta SLOTC3ROM_OFF_W
 	sta SLOTRESET
 
 	;; Restore return address from Y and A.

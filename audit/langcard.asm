@@ -3,15 +3,22 @@
 
 	!zone langcard {
 LANGCARDTESTS
+	lda #0
+	sta LCRESULT
 	lda MEMORY
 	cmp #49
-	bcs +
+	bcs LANGCARDTESTS_NO_CHECK
 	+print
 	!text "48K:SKIPPING LANGUAGE CARD TEST",$8D
 	+printed
+	sec
 	rts
+LANGCARDTESTS_NO_CHECK:
+	+print
+	!text "TESTING LANGUAGE CARD",$8D
+	+printed
 	;; Setup - store differing values in bank first and second banked areas.
-+	lda $C08B		; Read and write bank 1
+	lda $C08B		; Read and write bank 1
 	lda $C08B
 	lda #$11
 	sta $D17B		; $D17B is $53 in Apple II/plus/e/enhanced
@@ -20,6 +27,7 @@ LANGCARDTESTS
 	+prerr $0004 ;; E0004: We tried to put the language card into read bank 1, write bank 1, but failed to write.
 	!text "CANNOT WRITE TO LC BANK 1 RAM"
 	+prerred
+	sec
 	rts
 	lda #$33
 +	sta $FE1F		; FE1F is $60 in Apple II/plus/e/enhanced
@@ -28,6 +36,7 @@ LANGCARDTESTS
 	+prerr $0005 ;; E0005: We tried to put the language card into read RAM, write RAM, but failed to write.
 	!text "CANNOT WRITE TO LC RAM"
 	+prerred
+	sec
 	rts
 +	lda $C083		; Read and write bank 2
 	lda $C083
@@ -38,6 +47,7 @@ LANGCARDTESTS
 	+prerr $0006 ;; E0006: We tried to put the language card into read bank 2, write bank 2, but failed to write.
 	!text "CANNOT WRITE TO LC BANK 2 RAM"
 	+prerred
+	sec
 	rts
 
 	;; Parameterized tests
@@ -220,6 +230,7 @@ LANGCARDTESTS
 	+prerr $0007 ;; E0007: This is a data-driven test of Language Card operation. We initialize $D17B in RAM bank 1 to $11, $D17B in RAM bank 2 to $22, and $FE1F in RAM to $33. Then, we perform a testdata-driven sequence of LDA and STA to the $C08X range. Finally we (try to) increment $D17B and $FE1F. Then we test (a) the current live value in $D17B, (b) the current live value in $FE1F, (c) the RAM bank 1 value of $D17B, (d) the RAM bank 2 value of $D17B, and (e) the RAM value of $FE1F, to see whether they match expected values. $D17B is usually $53 in ROM, and $FE1F is usally $60. For more information on the operation of the language card soft-switches, see Understanding the Apple IIe, by James Fielding Sather, Pg 5-24.
 	!text "DATA-DRIVEN TEST FAILED"
 	+prerred
+	sec
 	rts
 
 .printseq
@@ -291,13 +302,14 @@ LANGCARDTESTS
 
 	nop			; Provide clean break after data when viewing disassembly
 	nop
-	nop
 .over
 
 	;; Success
 	+print
 	!text "LANGUAGE CARD TESTS SUCCEEDED",$8D
 	+printed
-.done
+	lda #1
+	sta LCRESULT
+	clc
 	rts
-	} ;langcard
+} ;langcard
