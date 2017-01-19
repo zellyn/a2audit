@@ -11,7 +11,7 @@
 	KSW = $38
 
 	LCRESULT = $10
-	LCRESULT2 = $11
+	LCRESULT1 = $11
 	AUXRESULT = $12
 
 	;; AUXMOVE locations
