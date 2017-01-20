@@ -138,4 +138,50 @@ F88E: A8        185  INSDS2   TAY
 0800-1fff Main
 2000-3fff Hires
 4000-bfff Main
-d000-ffff Zero
+
+Plan:
+Each test is a set of actual instructions, followed by a jsr, and a list of memory check data.
+Keep test locations in PCL,PCH.
+Check data:
+ - zero page current/main/aux: $ff, $100
+ - main current/main/aux: $200, $3ff, $800, $1fff, $4000, $5fff, $bfff
+ - text: $400, $7ff
+ - hires: $2000, $3fff
+ - CXXX ROM: 1=c300-c3ff, 2=c100-c2ff+c400-c7ff, 3=c800-cffe
+
+For each test:
+- Test location is in PCL,PCH.
+- JMP to the start of the test (we know where we're coming back to)
+- end of test jsr's to CHECK
+- CHECK:
+  - try to increment all memory locations
+  - pull address off the stack, so it knows where the check data is
+  - compare with check data
+  - if we get a problem:
+    Y=index of memory address in a table, X=desired | current/main/aux, A=actual
+    JMP to error routine:
+    - restore normal memory configuration
+    - save xya
+    - disassemble from PCL,PCH to JMP instruction
+    - print out memory address, current/main/aux, desired, actual
+    - quit test
+  - check rom
+    - if we see a problem:
+      Y = index of memory location
+      X = ROM-value
+      A = actual
+      X==A if we wanted RAM
+      JMP to error routine 2
+      - restore normal memory configuration
+      - save xya,carry
+      - disassemble from PCL,PCH to JMP instruction
+      - want ROM?
+        - yes: print out memory address, desired, actual
+        - no:  print out memory address, non-desired value
+      - quit test
+- increment PCL,PCH past check data
+- if it's pointing at a JMP, we're done.
+- otherwise, loop
+
+* Softswitch tests
+Just switch them on and off, and test each, one at a time.
