@@ -7,12 +7,16 @@
 	START = *
 
 	;; Zero-page locations.
-	CSW = $36
-	KSW = $38
-
+	SCRATCH = $1
 	LCRESULT = $10
 	LCRESULT1 = $11
 	AUXRESULT = $12
+
+	CSW = $36
+	KSW = $38
+
+	PCL=$3A
+	PCH=$3B
 
 	;; AUXMOVE locations
 	;; $3C
@@ -27,27 +31,54 @@
 	!addr	DST = $08
 	!addr   SHAINPUT = $eb
 	!addr   SHALENGTH = $ee
-	
+	!addr   tmp1 = $fa
+	!addr   tmp2 = $fb
+	!addr   tmp3 = $fc
+	!addr   tmp4 = $fd
+	!addr   tmp5 = $fe
+
 	;; Softswitch locations.
-	_80STORE_OFF_W = $C000
-	_80STORE_ON_W = $C001
-	_80STORE_READ = $C018
-	RAMRD_OFF_W = $C002
-	RAMRD_ON_W = $C003
-	RAMRD_READ = $C013
-	RAMWRT_OFF_W = $C004
-	RAMWRT_ON_W = $C005
-	RAMWRT_READ = $C014
-	INTCXROM_OFF_W = $C006
-	INTCXROM_ON_W = $C007
-	INTCXROM_READ = $C015
-	ALTZP_OFF_W = $C008
-	ALTZP_ON_W = $C009
-	ALTZP_READ = $C016
-	SLOTC3ROM_OFF_W = $C00A
-	SLOTC3ROM_ON_W = $C00B
-	SLOTC3ROM_READ = $C017
-	SLOTRESET = $CFFF
+	RESET_80STORE = $C000
+	SET_80STORE = $C001
+	READ_80STORE = $C018
+
+	RESET_RAMRD = $C002
+	SET_RAMRD = $C003
+	READ_RAMRD = $C013
+
+	RESET_RAMWRT = $C004
+	SET_RAMWRT = $C005
+	READ_RAMWRT = $C014
+
+	RESET_INTCXROM = $C006
+	SET_INTCXROM = $C007
+	READ_INTCXROM = $C015
+
+	RESET_ALTZP = $C008
+	SET_ALTZP = $C009
+	READ_ALTZP = $C016
+
+	RESET_SLOTC3ROM = $C00A
+	SET_SLOTC3ROM = $C00B
+	READ_SLOTC3ROM = $C017
+
+	RESET_TEXT = $C050
+	SET_TEXT = $C051
+	READ_TEXT = $C01A
+
+	RESET_MIXED = $C052
+	SET_MIXED = $C053
+	READ_MIXED = $C01B
+	
+	RESET_PAGE2 = $C054
+	SET_PAGE2 = $C055
+	READ_PAGE2 = $C01C
+	
+	RESET_HIRES = $C056
+	SET_HIRES = $C057
+	READ_HIRES = $C01D
+	
+	RESET_INTC8ROM = $CFFF
 
 	;; CXXX utility routine locations
 	AUXMOVE = $C311
@@ -68,7 +99,7 @@
 
 main:
 	;; Initialize stack to the top.
-	ldx $ff
+	ldx #$ff
 	txs
 	
 	jsr standard_fixup
@@ -197,7 +228,7 @@ standard_fixup:
 
 COPYTOAUX
 	;; Use AUXMOVE routine to copy the whole program to AUX memory.
-	sta SLOTC3ROM_OFF_W
+	sta RESET_SLOTC3ROM
 	lda #<START
 	sta $3C
 	sta $42

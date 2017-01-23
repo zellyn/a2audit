@@ -122,13 +122,12 @@ F88E: A8        185  INSDS2   TAY
  LDX #0
  LDA (PCL,X)
  PHA
- JSR F88E
+ JSR F88E (INSDS2)
  LDX #3
  JSR F8EA
  JSR F953
  STA PCL
  STY PCH
- PLA
  RTS
 * Auxmem tests
 
@@ -143,11 +142,14 @@ Plan:
 Each test is a set of actual instructions, followed by a jsr, and a list of memory check data.
 Keep test locations in PCL,PCH.
 Check data:
+ - zero/main/text/hires main mem
+ - zero/main/text/hires aux mem
+
  - zero page current/main/aux: $ff, $100
  - main current/main/aux: $200, $3ff, $800, $1fff, $4000, $5fff, $bfff
  - text: $400, $7ff
  - hires: $2000, $3fff
- - CXXX ROM: 1=c300-c3ff, 2=c100-c2ff+c400-c7ff, 3=c800-cffe
+ - CXXX ROM: 1=c300-c3ff, 2=c100-c2ff+c400-c7ff, 4=c800-cffe
 
 For each test:
 - Test location is in PCL,PCH.
@@ -158,7 +160,7 @@ For each test:
   - pull address off the stack, so it knows where the check data is
   - compare with check data
   - if we get a problem:
-    Y=index of memory address in a table, X=desired | current/main/aux, A=actual
+    X=index of memory address in a table, Y=desired | high-bit-set=main/unset=aux, A=actual
     JMP to error routine:
     - restore normal memory configuration
     - save xya
@@ -185,3 +187,8 @@ For each test:
 
 * Softswitch tests
 Just switch them on and off, and test each, one at a time.
+
+* Auxmem with mame
+On entry into AUXMEMTESTS
+SP: 01FE
+returned to 02A0

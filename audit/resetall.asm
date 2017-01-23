@@ -3,26 +3,34 @@
 
 !zone resetall {
 
-;;; Reset all soft-switches to known-good state. Burns X and Y, but preserves A.
+;;; Reset all soft-switches to known-good state. Burns $300 and $301 in main mem.
 RESETALL
-	tax			; Save A in X until we return
-	;; Save return address in Y and A, in case we switch zero-page memory.
+	sta RESET_RAMRD
+	sta RESET_RAMWRT
+	stx $300
+	sta $301
+
+	;; Save return address in X and A, in case we switch zero-page memory.
 	pla
-	tay
+	tax
 	pla
 
-	sta _80STORE_OFF_W
-	sta RAMRD_OFF_W
-	sta RAMWRT_OFF_W
-	sta INTCXROM_OFF_W
-	sta ALTZP_OFF_W
-	sta SLOTC3ROM_OFF_W
-	sta SLOTRESET
+	sta RESET_80STORE
+	sta RESET_INTCXROM
+	sta RESET_ALTZP
+	sta RESET_SLOTC3ROM
+	sta RESET_INTC8ROM
+	sta SET_TEXT
+	sta RESET_MIXED
+	sta RESET_PAGE2
+	sta RESET_HIRES
 
-	;; Restore return address from Y and A.
+	;; Restore return address from X and A.
 	pha
-	tya
+	txa
 	pha
-	txa			; Restore A
+
+	ldx $300
+	lda $301
 	rts
 }
