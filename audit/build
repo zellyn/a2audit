@@ -23,14 +23,36 @@ grep -h '+prerra\? .*;;' *.asm | awk -F' ;; ' '{print $2}' | sort | sed 's|\(E..
 
 # Also run mame? (set ROMPATH to your local variant)
 [[ -z "${ROMPATH-}" ]] && ROMPATH=~/mame/roms/
-[[ "${1-}" == '2ee' ]] && mame -rompath $ROMPATH apple2ee -flop1 ./audit.dsk -skip_gameinfo
-[[ "${1-}" == '2e' ]] && mame -rompath $ROMPATH apple2e -flop1 ./audit.dsk -skip_gameinfo
-[[ "${1-}" == '2p' ]] && mame -rompath $ROMPATH apple2p -flop1 ./audit.dsk -skip_gameinfo
-[[ "${1-}" == '2' ]] && mame -rompath $ROMPATH apple2 -flop1 ./audit.dsk -skip_gameinfo
-[[ "${1-}" == '2ee-d' ]] && mame -rompath $ROMPATH apple2ee -flop1 ./audit.dsk -skip_gameinfo -debug
-[[ "${1-}" == '2e-d' ]] && mame -rompath $ROMPATH apple2e -flop1 ./audit.dsk -skip_gameinfo -debug
-[[ "${1-}" == '2p-d' ]] && mame -rompath $ROMPATH apple2p -flop1 ./audit.dsk -skip_gameinfo -debug
-[[ "${1-}" == '2-d' ]] && mame -rompath $ROMPATH apple2 -flop1 ./audit.dsk -skip_gameinfo -debug
+
+case "${1-none}" in
+    "2ee")
+	mame -rompath $ROMPATH apple2ee -flop1 ./audit.dsk -skip_gameinfo
+	;;
+    "2e")
+	mame -rompath $ROMPATH apple2e -flop1 ./audit.dsk -skip_gameinfo
+	;;
+    "2p")
+	mame -rompath $ROMPATH apple2p -flop1 ./audit.dsk -skip_gameinfo
+	;;
+    "2")
+	mame -rompath $ROMPATH apple2 -flop1 ./audit.dsk -skip_gameinfo
+	;;
+    "2ee-d")
+	mame -rompath $ROMPATH apple2ee -flop1 ./audit.dsk -skip_gameinfo -debug
+	;;
+    "2e-d")
+	mame -rompath $ROMPATH apple2e -flop1 ./audit.dsk -skip_gameinfo -debug
+	;;
+    "2p-d")
+	mame -rompath $ROMPATH apple2p -flop1 ./audit.dsk -skip_gameinfo -debug
+	;;
+    "2-d")
+	mame -rompath $ROMPATH apple2 -flop1 ./audit.dsk -skip_gameinfo -debug
+	;;
+    "none")
+	;;
+    *)
+	echo Options: 2ee, 2e, 2p, 2, 2ee-d, 2e-d, 2p-d, 2-d
+esac
 
 true # Signal success (since we had a bunch of conditionals that can return false status).
-
