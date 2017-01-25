@@ -11,6 +11,7 @@
 	LCRESULT = $10
 	LCRESULT1 = $11
 	AUXRESULT = $12
+	SOFTSWITCHRESULT = $13
 
 	CSW = $36
 	KSW = $38
@@ -31,11 +32,13 @@
 	!addr	DST = $08
 	!addr   SHAINPUT = $eb
 	!addr   SHALENGTH = $ee
+	!addr   tmp0 = $f9
 	!addr   tmp1 = $fa
 	!addr   tmp2 = $fb
 	!addr   tmp3 = $fc
 	!addr   tmp4 = $fd
 	!addr   tmp5 = $fe
+	!addr   tmp6 = $ff
 
 	;; Softswitch locations.
 	RESET_80STORE = $C000
@@ -62,6 +65,14 @@
 	SET_SLOTC3ROM = $C00B
 	READ_SLOTC3ROM = $C017
 
+	RESET_80COL = $C00C
+	SET_80COL = $C00D
+	READ_80COL = $C01F
+
+	RESET_ALTCHRSET = $C00E
+	SET_ALTCHRSET = $C00F
+	READ_ALTCHRSET = $C01E
+
 	RESET_TEXT = $C050
 	SET_TEXT = $C051
 	READ_TEXT = $C01A
@@ -77,9 +88,14 @@
 	RESET_HIRES = $C056
 	SET_HIRES = $C057
 	READ_HIRES = $C01D
-	
+
 	RESET_INTC8ROM = $CFFF
 
+	;; Readable things without corresponding set/reset pairs.
+	READ_HRAM_BANK2 = $C011
+	READ_HRAMRD = $C012
+	READ_VBL = $C019
+	
 	;; CXXX utility routine locations
 	AUXMOVE = $C311
 	;; Monitor locations.
@@ -118,6 +134,9 @@ main:
 	;; Auxiliary memory card tests.
 	jsr AUXMEMTESTS
 
+	;; Tests of softswitch-reading
+	jsr SOFTSWITCHTESTS
+
 	;; ROM SHA-1 checks.
 	;; jsr SHASUMTESTS - do this later, because it's SLOW!
 
@@ -129,8 +148,9 @@ end:
 
 	!src "langcard.asm"
 	!src "auxmem.asm"
-	;!src "shasumtests.asm"
+	!src "softswitch.asm"
 	!src "resetall.asm"
+	;!src "shasumtests.asm"
 
 print
 	lda $C081

@@ -63,13 +63,13 @@ AUXMEMTESTS
 	lda #$44
 	sta $D17B
 
-	jsr .zptoaux
+	jsr zptoaux
 	
 	sta SET_ALTZP
 	jsr LANGCARDTESTS_NO_CHECK
 	sta RESET_ALTZP
 
-	jsr .zpfromaux
+	jsr zpfromaux
 
 	lda LCRESULT
 	bne +
@@ -374,7 +374,7 @@ AUXMEMTESTS
 +++	rts
 	
 ;;; Copy zero page to aux mem. Assumes zp pointing at main mem, and leaves it that way.
-.zptoaux
+zptoaux
 	ldx #0
 -	sta RESET_ALTZP
 	lda 0,x
@@ -386,7 +386,7 @@ AUXMEMTESTS
 	rts
 
 ;;; Copy zero page from aux mem. Assumes zp pointing at main mem, and leaves it that way.
-.zpfromaux
+zpfromaux
 	ldx #0
 -	sta SET_ALTZP
 	lda 0,x

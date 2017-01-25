@@ -23,9 +23,13 @@ Error messages can be viewed at
 - [x] sha1sum assembly code (currently not used yet because it's slow)
 - [x] language card tests
 - [x] main/auxiliary memory softswitch behavior tests
+- [x] softswitch reading tests
 
 ### TODO
 
+- [ ] Incorporate Cxxx testing into data-driven test
+- [ ] Add testcases for Cxxx testing
+- [ ] weirder softswitch behavior corner cases
 - [ ] floating-bus tests
 
 ## Raison d'être
