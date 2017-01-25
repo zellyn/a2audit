@@ -19,7 +19,7 @@ Error messages can be viewed at
 
 ### Done
 
-- [x] toolchain for automation ([diskii](github.com/zellyn/diskii))
+- [x] toolchain for automation ([diskii](https://github.com/zellyn/diskii))
 - [x] sha1sum assembly code (currently not used yet because it's slow)
 - [x] language card tests
 - [x] main/auxiliary memory softswitch behavior tests
