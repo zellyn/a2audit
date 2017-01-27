@@ -192,3 +192,12 @@ Just switch them on and off, and test each, one at a time.
 On entry into AUXMEMTESTS
 SP: 01FE
 returned to 02A0
+* 80 column details
+Lores80 color differences: UtA2e: 8-29
+
+* apple2e.rom
+
+4000-40ff is zeros. I believe this corresponds to C000-C0ff
+
+
+

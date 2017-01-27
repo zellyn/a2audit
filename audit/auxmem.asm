@@ -9,11 +9,15 @@
 	.MEM_4 = %11
 	.MEM_2_1_1_1 = (.MEM_2 << 0) + (.MEM_1 << 2) + (.MEM_1 << 4) + (.MEM_1 << 6)
 	.MEM_3_2_2_2 = (.MEM_3 << 0) + (.MEM_2 << 2) + (.MEM_2 << 4) + (.MEM_2 << 6)
-	
-	.C_1 = %001
-	.C_3 = %010
-	.C_8 = %100
-	.C_138 = .C_1 | .C_3 | .C_8
+
+	.C_8f = %0001
+	.C_12 = %0010
+	.C_47 = %0100
+	.C_3  = %1000
+	.C_0  = %0000
+	.C_skip = $80
+	.C_1348 = .C_12 | .C_3 | .C_47 | .C_8f
+	.C_38 = .C_3 | .C_8f
 
 	.checkdata = tmp1
 	.ismain = tmp3
@@ -202,9 +206,10 @@ AUXMEMTESTS
 
 	;; First checkdata byte is for Cxxx tests.
 	jsr .nextcheck
+	bmi +
 	jsr .checkCxxx
 
-	ldx .checkdata
++	ldx .checkdata
 	ldy .checkdata+1
 	jsr RESETALL
 	stx .checkdata
@@ -331,8 +336,133 @@ AUXMEMTESTS
 	
 ;;; Check that the expected ROM areas are visible.
 .checkCxxx
+	.gotCxxx = tmp0
+	.wantCxxx = SCRATCH
+	pha
+	jsr .genCxxxFingerprint
+	pla
+	cmp .gotCxxx
+	beq .checkCxxxDone
+	lda .gotCxxx
+
+	;; Reset, but copy .checkdata over.
+	ldx .checkdata
+	ldy .checkdata+1
+	jsr RESETALL
+	stx .checkdata
+	sty .checkdata+1
+	sta .gotCxxx
+	ldy #0
+	lda (.checkdata),y
+	sta .wantCxxx
+
+	jsr .printtest
+	+print
+	!text "WANT:",$8D
+	+printed
+	lda .wantCxxx
+	jsr .printCxxxBits
+	+print
+	!text "GOT:",$8D
+	+printed
+	lda .gotCxxx
+	jsr .printCxxxBits
+	
+	+prerr $000B ;; E000B: This is a the Cxxx-ROM check part of the auxiliary memory data-driven test (see E000A for a description of the other part). After a full reset, we perform a testdata-driven sequence of instructions. Finally we check which parts of Cxxx ROM seem to be visible. We check C100-C2FF, C300-C3FF, C400-C7FF (which should be the same as C100-C2FF), and C800-CFFE. For more details, see Understanding the Apple IIe, by James Fielding Sather, Pg 5-28.
+	!text "CXXX ROM TEST FAILED"
+	+prerred
+
+	;; Don't continue with auxmem check: return from parent JSR.
+	pla
+	pla
+	sec
+	rts
+	
+.checkCxxxDone
 	rts
 
+.genCxxxFingerprint
+	.dataptr = SCRATCH2
+	.want = SCRATCH3
+	.loopctr = SCRATCH
+
+	lda #0
+	sta .gotCxxx
+	lda #0
+	sta .dataptr
+	lda #4
+	sta .loopctr
+
+--	clc
+	ror .gotCxxx
+	ldx #4			; four check bytes per region
+	lda #$8			; start out with positive match bit
+	ora .gotCxxx
+	sta .gotCxxx
+-	ldy .dataptr
+	lda .cxtestdata,y
+	iny
+	sta SRC
+	lda .cxtestdata,y
+	iny
+	sta SRC+1
+	lda .cxtestdata,y
+	iny
+	sta .want
+	sty .dataptr
+	ldy #0
+	lda (SRC),y
+	cmp .want
+	beq +
+	lda #($ff-$8)		; mismatch: clear current bit
+	and .gotCxxx
+	sta .gotCxxx
++	dex
+	bne -
+
+	dec .loopctr
+	bne --
+	rts
+
+.printCxxxBits
+	tax
+	+print
+	!text "- C100-C2FF: "
+	+printed
+	txa
+	and #.C_12
+	jsr .printCxxxBit
+	+print
+	!text "- C300-C3FF: "
+	+printed
+	txa
+	and #.C_3
+	jsr .printCxxxBit
+	+print
+	!text "- C400-C7FF: "
+	+printed
+	txa
+	and #.C_47
+	jsr .printCxxxBit
+	+print
+	!text "- C800-CFFE: "
+	+printed
+	txa
+	and #.C_8f
+	jsr .printCxxxBit
+	rts
+
+.printCxxxBit
+	bne +
+	+print
+	!text "?",$8D
+	+printed
+	rts
++	+print
+	!text "ROM",$8D
+	+printed
+	rts
+	
 ;;; Increment .checkdata pointer to the next memory location, and load
 ;;; it into the accumulator. X and Y are preserved.
 .nextcheck
@@ -403,26 +533,26 @@ zpfromaux
 	;; Test 1: everything reset.
 	lda #1
 	jsr .check
-	!byte .C_138, 2, 2, 2, 2, 3, 3, 3, 3
+	!byte .C_skip, 2, 2, 2, 2, 3, 3, 3, 3
 
 	;; Test 2: write to AUX but read from Main RAM, everything else normal.
 	lda #2
 	sta SET_RAMWRT
 	jsr .check
-	!byte .C_138, 2, 1, 1, 1, 3, 2, 2, 2
+	!byte .C_skip, 2, 1, 1, 1, 3, 2, 2, 2
 
 	;; Test 3: write to main but read AUX, everything else normal.
 	lda #3
 	sta SET_RAMRD
 	jsr .check
-	!byte .C_138, 2, 4, 4, 4, 3, 3, 3, 3
+	!byte .C_skip, 2, 4, 4, 4, 3, 3, 3, 3
 	
 	;; Test 4: write to AUX, read from AUX, everything else normal.
 	lda #4
 	sta SET_RAMRD
 	sta SET_RAMWRT
 	jsr .check
-	!byte .C_138, 2, 1, 1, 1, 3, 4, 4, 4
+	!byte .C_skip, 2, 1, 1, 1, 3, 4, 4, 4
 
 	;; Our four basic tests, but with 80STORE ON -----------------
 	;; (400-7ff is pointing at main mem)
@@ -431,21 +561,21 @@ zpfromaux
 	lda #5
 	sta SET_80STORE
 	jsr .check
-	!byte .C_138, 2, 2, 2, 2, 3, 3, 3, 3
+	!byte .C_skip, 2, 2, 2, 2, 3, 3, 3, 3
 
 	;; Test 6: write to aux
 	lda #6
 	sta SET_RAMWRT
 	sta SET_80STORE
 	jsr .check
-	!byte .C_138, 2, 1, 2, 1, 3, 2, 3, 2
+	!byte .C_skip, 2, 1, 2, 1, 3, 2, 3, 2
 
 	;; Test 7: read from aux
 	lda #7
 	sta SET_RAMRD
 	sta SET_80STORE
 	jsr .check
-	!byte .C_138, 2, 4, 2, 4, 3, 3, 3, 3
+	!byte .C_skip, 2, 4, 2, 4, 3, 3, 3, 3
 	
 	;; Test 8: read and write aux
 	lda #8
@@ -453,7 +583,7 @@ zpfromaux
 	sta SET_RAMWRT
 	sta SET_80STORE
 	jsr .check
-	!byte .C_138, 2, 1, 2, 1, 3, 4, 3, 4
+	!byte .C_skip, 2, 1, 2, 1, 3, 4, 3, 4
 
 	;; Our four basic tests, but with 80STORE and PAGE2 ON -------
 	;; (400-7ff is pointing at aux mem)
@@ -463,7 +593,7 @@ zpfromaux
 	sta SET_80STORE
 	sta SET_PAGE2
 	jsr .check
-	!byte .C_138, 2, 2, 1, 2, 3, 3, 4, 3
+	!byte .C_skip, 2, 2, 1, 2, 3, 3, 4, 3
 
 	;; Test A: write to aux
 	lda #$a
@@ -471,7 +601,7 @@ zpfromaux
 	sta SET_80STORE
 	sta SET_PAGE2
 	jsr .check
-	!byte .C_138, 2, 1, 1, 1, 3, 2, 4, 2
+	!byte .C_skip, 2, 1, 1, 1, 3, 2, 4, 2
 
 	;; Test B: read from aux
 	lda #$b
@@ -479,7 +609,7 @@ zpfromaux
 	sta SET_80STORE
 	sta SET_PAGE2
 	jsr .check
-	!byte .C_138, 2, 4, 1, 4, 3, 3, 4, 3
+	!byte .C_skip, 2, 4, 1, 4, 3, 3, 4, 3
 	
 	;; Test C: read and write aux
 	lda #$c
@@ -488,7 +618,7 @@ zpfromaux
 	sta SET_80STORE
 	sta SET_PAGE2
 	jsr .check
-	!byte .C_138, 2, 1, 1, 1, 3, 4, 4, 4
+	!byte .C_skip, 2, 1, 1, 1, 3, 4, 4, 4
 
 	;; Our four basic tests, but with 80STORE and HIRES ON -------
 	;; (400-7ff and 2000-3fff are pointing at main mem)
@@ -498,7 +628,7 @@ zpfromaux
 	sta SET_80STORE
 	sta SET_HIRES
 	jsr .check
-	!byte .C_138, 2, 2, 2, 2, 3, 3, 3, 3
+	!byte .C_skip, 2, 2, 2, 2, 3, 3, 3, 3
 
 	;; Test E: write to aux
 	lda #$e
@@ -506,7 +636,7 @@ zpfromaux
 	sta SET_80STORE
 	sta SET_HIRES
 	jsr .check
-	!byte .C_138, 2, 1, 2, 2, 3, 2, 3, 3
+	!byte .C_skip, 2, 1, 2, 2, 3, 2, 3, 3
 
 	;; Test F: read from aux
 	lda #$f
@@ -514,7 +644,7 @@ zpfromaux
 	sta SET_80STORE
 	sta SET_HIRES
 	jsr .check
-	!byte .C_138, 2, 4, 2, 2, 3, 3, 3, 3
+	!byte .C_skip, 2, 4, 2, 2, 3, 3, 3, 3
 	
 	;; Test 10: read and write aux
 	lda #$10
@@ -523,7 +653,7 @@ zpfromaux
 	sta SET_80STORE
 	sta SET_HIRES
 	jsr .check
-	!byte .C_138, 2, 1, 2, 2, 3, 4, 3, 3
+	!byte .C_skip, 2, 1, 2, 2, 3, 4, 3, 3
 
 	;; Our four basic tests, but with 80STORE, HIRES, PAGE2 ON ---
 	;; (400-7ff and 2000-3fff are pointing at aux mem)
@@ -534,7 +664,7 @@ zpfromaux
 	sta SET_HIRES
 	sta SET_PAGE2
 	jsr .check
-	!byte .C_138, 2, 2, 1, 1, 3, 3, 4, 4
+	!byte .C_skip, 2, 2, 1, 1, 3, 3, 4, 4
 
 	;; Test 12: write to aux
 	lda #$12
@@ -543,7 +673,7 @@ zpfromaux
 	sta SET_HIRES
 	sta SET_PAGE2
 	jsr .check
-	!byte .C_138, 2, 1, 1, 1, 3, 2, 4, 4
+	!byte .C_skip, 2, 1, 1, 1, 3, 2, 4, 4
 
 	;; Test 13: read from aux
 	lda #$13
@@ -552,7 +682,7 @@ zpfromaux
 	sta SET_HIRES
 	sta SET_PAGE2
 	jsr .check
-	!byte .C_138, 2, 4, 1, 1, 3, 3, 4, 4
+	!byte .C_skip, 2, 4, 1, 1, 3, 3, 4, 4
 	
 	;; Test 14: read and write aux
 	lda #$14
@@ -562,7 +692,52 @@ zpfromaux
 	sta SET_HIRES
 	sta SET_PAGE2
 	jsr .check
-	!byte .C_138, 2, 1, 1, 1, 3, 4, 4, 4
+	!byte .C_skip, 2, 1, 1, 1, 3, 4, 4, 4
+
+	;; Test 15: Cxxx test with everything reset.
+	lda #$15
+	jsr .check
+	!byte .C_3, 2, 2, 2, 2, 3, 3, 3, 3
+
+	;; Test 16: Cxxx test with SLOTC3ROM set
+	lda #$16
+	sta SET_SLOTC3ROM
+	jsr .check
+	!byte .C_0, 2, 2, 2, 2, 3, 3, 3, 3
+
+	;; Test 17: Cxxx test with INTCXROM set.
+	lda #$17
+	sta SET_INTCXROM
+	jsr .check
+	!byte .C_1348, 2, 2, 2, 2, 3, 3, 3, 3
+
+	;; Test 18: Cxxx test with SLOTC3ROM and INTCXROM set
+	lda #$18
+	sta SET_SLOTC3ROM
+	sta SET_INTCXROM
+	jsr .check
+	!byte .C_1348, 2, 2, 2, 2, 3, 3, 3, 3
+
+	;; Test 19: Cxxx test with "INTC8ROM" set
+	lda #$19
+	lda $C300
+	jsr .check
+	!byte .C_38, 2, 2, 2, 2, 3, 3, 3, 3
+
+	;; Test 1A: Cxxx test showing inability to reset "INTC8ROM" with softswitches.
+	lda #$1A
+	lda $C300
+	sta SET_SLOTC3ROM
+	jsr .check
+	!byte .C_8f, 2, 2, 2, 2, 3, 3, 3, 3
+
+	;; Test 1B: Cxxx test showing ability to reset "INTC8ROM" with CFFF reference.
+	lda #$1B
+	lda $C300
+	sta SET_SLOTC3ROM
+	lda RESET_INTC8ROM
+	jsr .check
+	!byte .C_0, 2, 2, 2, 2, 3, 3, 3, 3
 
 	!byte 0 ; end of tests
 
@@ -579,4 +754,28 @@ zpfromaux
 .memorylen = * - .memorylocs - 2
 	!word 0
 
+.cxtestdata
+	;; C800-Cffe
+	!byte $00, $c8, $4c
+	!byte $21, $ca, $8d
+	!byte $43, $cc, $f0
+	!byte $b5, $ce, $7b
+
+	;; C100-C2ff
+	!byte $4d, $c1, $a5
+	!byte $6c, $c1, $2a
+	!byte $b5, $c2, $ad
+	!byte $ff, $c2, $00
+
+	;; C400-C7ff
+	!byte $36, $c4, $8d
+	!byte $48, $c5, $18
+	!byte $80, $c6, $8b
+	!byte $6e, $c7, $cb
+
+	;; C300-C3ff
+	!byte $00, $c3, $2c
+	!byte $0a, $c3, $0c
+	!byte $2b, $c3, $04
+	!byte $e2, $c3, $ed
 } ;auxmem

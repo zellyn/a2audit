@@ -8,6 +8,8 @@
 
 	;; Zero-page locations.
 	SCRATCH = $1
+	SCRATCH2 = $2
+	SCRATCH3 = $3
 	LCRESULT = $10
 	LCRESULT1 = $11
 	AUXRESULT = $12

@@ -24,11 +24,11 @@ Error messages can be viewed at
 - [x] language card tests
 - [x] main/auxiliary memory softswitch behavior tests
 - [x] softswitch reading tests
+- [x] Incorporate Cxxx testing into data-driven test
+- [x] Add testcases for Cxxx testing
 
 ### TODO
 
-- [ ] Incorporate Cxxx testing into data-driven test
-- [ ] Add testcases for Cxxx testing
 - [ ] weirder softswitch behavior corner cases
 - [ ] floating-bus tests
 

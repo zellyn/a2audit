@@ -60,6 +60,7 @@ SOFTSWITCHTESTS
 	ldx #$80
 	jsr RESETALL
 	jsr .fail
+	beq .wrtloopend
 +	dex
 	bne -
 
@@ -69,9 +70,10 @@ SOFTSWITCHTESTS
 	ldx #.testtimes		; test `.testtimes` times
 -	lda (.readloc),y
 	bpl +			;ok
-	ldx #$02		;TODO: create "LEAVE" fail message
+	ldx #$42
 	jsr RESETALL
 	jsr .fail
+	beq .wrtloopend
 +	dex
 	bne -
 
@@ -84,6 +86,7 @@ SOFTSWITCHTESTS
 	ldx #$82
 	jsr RESETALL
 	jsr .fail
+	beq .wrtloopend
 +	dex
 	bne -
 
@@ -96,9 +99,11 @@ SOFTSWITCHTESTS
 	ldx #$80
 	jsr RESETALL
 	jsr .fail
+	beq .wrtloopend
 +	dex
 	bne -
 
+.wrtloopend
 	dec .loopcount
 	bne .wrtloop
 
@@ -131,6 +136,7 @@ SOFTSWITCHTESTS
 	ldx #$00
 	jsr RESETALL
 	jsr .fail
+	beq .readloopend
 +	dex
 	bne -
 
@@ -143,6 +149,7 @@ SOFTSWITCHTESTS
 	ldx #$02
 	jsr RESETALL
 	jsr .fail
+	beq .readloopend
 +	dex
 	bne -
 
@@ -155,9 +162,11 @@ SOFTSWITCHTESTS
 	ldx #$00
 	jsr RESETALL
 	jsr .fail
+	beq .readloopend
 +	dex
 	bne -
 
+.readloopend
 	dec .loopcount
 	bne .readloop
 
@@ -180,6 +189,7 @@ SOFTSWITCHTESTS
 ;;; A = actual value read (which tells what we expected: the opposite)
 .fail
 	sta SCRATCH
+	stx SCRATCH2
 	txa
 	bmi +
 	+print
@@ -202,7 +212,14 @@ SOFTSWITCHTESTS
 	+print
 	!text " SHOULD "
 	+printed
-	lda SCRATCH
+	lda SCRATCH2
+	and #$40
+	beq +
+	+print
+	!text "NOT SET "
+	+printed
+	beq ++
++	lda SCRATCH
 	bpl +
 	+print
 	!text "RE"
@@ -210,11 +227,11 @@ SOFTSWITCHTESTS
 +	+print
 	!text "SET "
 	+printed
-	ldx .readloc
+++	ldx .readloc
 	ldy .readloc+1
 	jsr PRNTYX
 	+print
-	!text ";GOT $" 
+	!text ";GOT " 
 	+printed
 	lda SCRATCH
 	jsr PRBYTE
@@ -222,7 +239,6 @@ SOFTSWITCHTESTS
 	jsr COUT
 	lda #0
 	sta SOFTSWITCHRESULT
-	ldx #1
 	rts
 	
 .writeswitches

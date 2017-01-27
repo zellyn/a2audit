@@ -296,8 +296,8 @@ LANGCARDTESTS_NO_CHECK:
 	!byte $23, $34, $11, $23, $34		;
 	!byte $07, $0D, $ff			; Read $C087, read $C08D (read ROM, write bank 1)
 	!byte $53, $60, $54, $22, $61		;
-;	!byte $0b, $8b, $0b, $ff		; Read $C08B, write $C08B, read $C08B (read RAM bank 1, no write)
-;	!byte $11, $33, $11, $22, $33		; (this one is tricky: reset WRTCOUNT by writing halfway)
+	!byte $0b, $8b, $0b, $ff		; Read $C08B, write $C08B, read $C08B (read RAM bank 1, no write)
+	!byte $11, $33, $11, $22, $33		; (this one is tricky: reset WRTCOUNT by writing halfway)
 	!byte $ff
 
 	nop			; Provide clean break after data when viewing disassembly
