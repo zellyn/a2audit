@@ -21,14 +21,6 @@
 	PCL=$3A
 	PCH=$3B
 
-	;; AUXMOVE locations
-	;; $3C
-	;; $3D
-	;; $3E
-	;; $3F
-	;; $42
-	;; $43
-
 	;; SHASUM locations
 	!addr	SRC = $06
 	!addr	DST = $08
@@ -98,8 +90,6 @@
 	READ_HRAMRD = $C012
 	READ_VBL = $C019
 	
-	;; CXXX utility routine locations
-	AUXMOVE = $C311
 	;; Monitor locations.
 	HOME = $FC58
 	COUT = $FDED
@@ -250,19 +240,25 @@ standard_fixup:
 
 COPYTOAUX
 	;; Use AUXMOVE routine to copy the whole program to AUX memory.
-	sta RESET_SLOTC3ROM
+	jsr RESETALL
 	lda #<START
-	sta $3C
-	sta $42
+	sta SRC
 	lda #>START
-	sta $3D
-	sta $43
-	lda #<(LASTSTRING-1)
-	sta $3E
-	lda #>(LASTSTRING-1)
-	sta $3F
-	sec			; Move from main to aux memory.
-	jsr AUXMOVE
+	sta SRC+1
+	sta SET_RAMWRT
+	ldy #0
+-	lda (SRC),y
+	sta (SRC),y
+	inc SRC
+	bne +
+	inc SRC+1
++	lda SRC
+	cmp #<(LASTSTRING)
+	bne -
+	lda SRC+1
+	cmp #>(LASTSTRING)
+	bne -
+	sta RESET_RAMWRT
 	rts
 	
 ;	!if * != STRINGS {
