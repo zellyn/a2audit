@@ -91,13 +91,13 @@
 	READ_VBL = $C019
 	
 	;; Monitor locations.
-	HOME = $FC58
-	COUT = $FDED
-	COUT1 = $FDF0
-	KEYIN = $FD1B
-	CROUT = $FD8E
-	PRBYTE = $FDDA
-	PRNTYX = $F940
+	;HOME = $FC58
+	;COUT = $FDED
+	;COUT1 = $FDF0
+	;KEYIN = $FD1B
+	;CROUT = $FD8E
+	;PRBYTE = $FDDA
+	;PRNTYX = $F940
 
 	STRINGS = $7000
 	!set LASTSTRING = $7000
@@ -111,6 +111,7 @@ main:
 	txs
 	
 	jsr standard_fixup
+	jsr RESET
 
 	jsr HOME
 	+print
@@ -136,12 +137,14 @@ end:
 	+print
 	!text "END"
 	+printed
+	jsr RESETALL
 	jmp *
 
 	!src "langcard.asm"
 	!src "auxmem.asm"
 	!src "softswitch.asm"
 	!src "resetall.asm"
+	!src "monitor-routines.asm"
 	;!src "shasumtests.asm"
 
 print
@@ -221,8 +224,6 @@ standard_fixup:
 	;; of CSW or KSW will be 0.
 
 	;; Fixup CSW
-	lda CSW
-	bne +
 	;; Point COUT at COUT1
 	lda #<COUT1
 	sta CSW
@@ -230,13 +231,11 @@ standard_fixup:
 	sta CSW+1
 
 	;; Fixup KSW
-+	lda KSW
-	bne +
 	lda #<KEYIN
 	sta KSW
 	lda #>KEYIN
 	sta KSW+1
-+	rts
+	rts
 
 COPYTOAUX
 	;; Use AUXMOVE routine to copy the whole program to AUX memory.

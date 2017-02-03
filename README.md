@@ -26,9 +26,14 @@ Error messages can be viewed at
 - [x] softswitch reading tests
 - [x] Incorporate Cxxx testing into data-driven test
 - [x] Add testcases for Cxxx testing
+- [x] duplicate HOME and COUT routines from AppleII, so IIe tests
+      don't depend on Cxxx ROM working
 
 ### TODO
 
+- [ ] IIe: check that we really have 128K (aux switching actually does
+      anything)
+- [ ] IIe: don't test auxmem softswitches if we only have 64k
 - [ ] weirder softswitch behavior corner cases
 - [ ] floating-bus tests
 
