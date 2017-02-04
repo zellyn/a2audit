@@ -24,6 +24,9 @@ grep -h '+prerra\? .*;;' *.asm | awk -F' ;; ' '{print $2}' | sort | sed 's|\(E..
 # Also run mame? (set ROMPATH to your local variant)
 [[ -z "${ROMPATH-}" ]] && ROMPATH=~/mame/roms/
 
+# Write audit.o into an OpenEmulator config?
+[[ -z "${TMPLS-}" ]] && TMPLS=~/gh/OpenEmulator-OSX/modules/libemulation/res/templates
+
 case "${1-none}" in
     "2ee")
 	mame -rompath $ROMPATH apple2ee -flop1 ./audit.dsk -skip_gameinfo
@@ -48,6 +51,10 @@ case "${1-none}" in
 	;;
     "2-d")
 	mame -rompath $ROMPATH apple2 -flop1 ./audit.dsk -skip_gameinfo -debug
+	;;
+    "oe")
+	(head -c 24576 /dev/zero; cat audit.o; head -c 65536 /dev/zero) | head -c 65536 > $TMPLS/Apple\ II/Apple\ IIe-test.emulation/appleIIe.ram.bin
+	sed -e 's|<property name="pc" value="0x...."/>|<property name="pc" value="0x6000"/>|' $TMPLS/Apple\ II/Apple\ IIe.xml > $TMPLS/Apple\ II/Apple\ IIe-test.emulation/info.xml
 	;;
     "none")
 	;;
