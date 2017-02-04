@@ -35,6 +35,21 @@ SOFTSWITCHTESTS
 	lda #(.readswitches-.writeswitches)/6
 	sta .loopcount
 
+	;; Check memory: <= 65K: don't test RAMRD
+	lda MEMORY
+	cmp #66
+	bcs .wrtloop		; Enough memory: continue
+
+	;; Not enough: skip one loop iteration, and increment SRC past RAMRD addresses
+	dec .loopcount
+	clc
+	lda SRC
+	adc #6
+	sta SRC
+	lda SRC+1
+	adc #0
+	sta SRC+1
+
 .wrtloop
 	;; Copy reset/set/read locations to .resetloc, .setloc, .readloc
 	ldy #0
@@ -242,11 +257,11 @@ SOFTSWITCHTESTS
 	rts
 	
 .writeswitches
-	!word RESET_80STORE, SET_80STORE, READ_80STORE
 	!word RESET_RAMRD, SET_RAMRD, READ_RAMRD
 	!word RESET_RAMWRT, SET_RAMWRT, READ_RAMWRT
-	!word RESET_INTCXROM, SET_INTCXROM, READ_INTCXROM
+	!word RESET_80STORE, SET_80STORE, READ_80STORE
 	!word RESET_ALTZP, SET_ALTZP, READ_ALTZP
+	!word RESET_INTCXROM, SET_INTCXROM, READ_INTCXROM
 	!word RESET_SLOTC3ROM, SET_SLOTC3ROM, READ_SLOTC3ROM
 	!word RESET_80COL, SET_80COL, READ_80COL
 	!word RESET_ALTCHRSET, SET_ALTCHRSET, READ_ALTCHRSET

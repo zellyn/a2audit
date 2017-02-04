@@ -43,3 +43,7 @@ This is a data-driven test of main and auxiliary memory softswitch operation. We
 ## E000B
 
 This is a the Cxxx-ROM check part of the auxiliary memory data-driven test (see E000A for a description of the other part). After a full reset, we perform a testdata-driven sequence of instructions. Finally we check which parts of Cxxx ROM seem to be visible. We check C100-C2FF, C300-C3FF, C400-C7FF (which should be the same as C100-C2FF), and C800-CFFE. For more details, see Understanding the Apple IIe, by James Fielding Sather, Pg 5-28.
+
+## E000C
+
+$400 main memory and $300 aux memory seem to write to the same place, which is probably an emulator bug.

@@ -5,7 +5,59 @@
 	jsr IDENTIFY
 	lda $C082		; Put ROM back in place.
 
-	+print
+	;; Fix up possibly broken MEMORY count on IIe machines.
+	;; See UtAIIe: 5-38
+	lda MACHINE
+	cmp #IIe
+	bne +++
+
+	jsr RESETALL
+	sta SET_80STORE
+	lda SET_HIRES
+	lda SET_PAGE2
+	lda #$00
+	sta $400
+	lda #$88
+	sta $2000
+	cmp $400
+	beq .has65k
+	cmp $2000
+	bne .has64k
+	cmp $2000
+	bne .has64k
+
+	;; Okay, it looks like we have 128K. But what if our emulator
+	;; is just broken, and we're reading and writing the same bank of
+	;; RAM for both main and aux mem? Let's check for that explicitly.
+	jsr RESETALL
+	lda #$88
+	sta $400
+	lda #$89
+	sta SET_RAMWRT
+	sta $400
+	lda #$88
+	sta RESET_RAMWRT
+	cmp $400
+	bne +
+	cmp $400
+	beq ++
+
++	+prerr $000C ;; E000C: $400 main memory and $300 aux memory seem to write to the same place, which is probably an emulator bug.
+	!text "MAIN AND AUX ARE SAME RAM"
+	+prerred
+	jmp end
+	
+.has64k
+	lda #64
+	!byte $2C
+.has65k lda #65
+	sta MEMORY
+
+++	jsr RESETALL
+	lda #'A'
+	sta $400
+
++++	+print
 	!text "MEMORY:"
 	+printed
 	lda MEMORY
