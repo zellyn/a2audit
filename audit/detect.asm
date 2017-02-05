@@ -43,9 +43,8 @@
 	beq ++
 
 +	+prerr $000C ;; E000C: $400 main memory and $300 aux memory seem to write to the same place, which is probably an emulator bug.
-	!text "MAIN AND AUX ARE SAME RAM"
+	!text "BUG:MAIN AND AUX ARE SAME:PRETEND 64K"
 	+prerred
-	jmp end
 	
 .has64k
 	lda #64

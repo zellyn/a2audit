@@ -53,7 +53,7 @@ case "${1-none}" in
 	mame -rompath $ROMPATH apple2 -flop1 ./audit.dsk -skip_gameinfo -debug
 	;;
     "oe")
-	(head -c 24576 /dev/zero; cat audit.o; head -c 65536 /dev/zero) | head -c 65536 > $TMPLS/Apple\ II/Apple\ IIe-test.emulation/appleIIe.ram.bin
+	(head -c 24576 /dev/zero; cat audit.o; head -c 65536 /dev/zero) | head -c 65536 > $TMPLS/Apple\ II/Apple\ IIe-test.emulation/appleIIe.mainRam.bin
 	sed -e 's|<property name="pc" value="0x...."/>|<property name="pc" value="0x6000"/>|' $TMPLS/Apple\ II/Apple\ IIe.xml > $TMPLS/Apple\ II/Apple\ IIe-test.emulation/info.xml
 	;;
     "none")
