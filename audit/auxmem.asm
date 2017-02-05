@@ -739,6 +739,23 @@ zpfromaux
 	jsr .check
 	!byte .C_0, 2, 2, 2, 2, 3, 3, 3, 3
 
+	;; Test 1C: Cxxx test showing inability to reset "INTC8ROM" with CFFF reference.
+	lda #$1B
+	sta SET_SLOTC3ROM
+	sta SET_INTCXROM
+	lda RESET_INTC8ROM
+	jsr .check
+	!byte .C_1348, 2, 2, 2, 2, 3, 3, 3, 3
+
+	;; Test 1D: Cxxx test showing that "INTC8ROM" isn't set if SLOTC3ROM isn't reset.
+	lda #$1D
+	sta SET_INTCXROM
+	sta SET_SLOTC3ROM
+	lda $C300
+	sta RESET_INTCXROM
+	jsr .check
+	!byte .C_0, 2, 2, 2, 2, 3, 3, 3, 3
+
 	!byte 0 ; end of tests
 
 .memorylocs
