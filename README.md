@@ -4,6 +4,9 @@ This repository contains routines to audit Apple II computers (II,
 II+, IIe, IIc), providing information about hardware, ROM versions,
 RAM configuration, and behavior.
 
+The file to download and try is
+[audit/audit.dsk](https://github.com/zellyn/a2audit/blob/master/audit/audit.dsk).
+
 Eventually, it should comprise a complete emulator test suite,
 enabling emulator writers to systematically identify and eliminate
 software-testable differences from real hardware. If a difference
@@ -28,6 +31,7 @@ Error messages can be viewed at
 - [x] Add testcases for Cxxx testing
 - [x] duplicate HOME and COUT routines from AppleII, so IIe tests
       don't depend on Cxxx ROM working
+- [x] Some simple "same result from two different modes" graphics tests
 
 ### TODO
 
@@ -36,6 +40,9 @@ Error messages can be viewed at
 - [ ] IIe: don't test auxmem softswitches if we only have 64k
 - [ ] weirder softswitch behavior corner cases
 - [ ] floating-bus tests
+- [ ] dbl lores tests
+- [ ] weird lores tests
+- [ ] undelayed hires tests
 
 ## Raison d'être
 
@@ -43,4 +50,3 @@ This test suite is a step on the way to implementing Apple IIe
 (enhanced) support in
 [OpenEmulator](http://openemulatorproject.github.io/): I may alternate
 adding tests here and features there.
-

@@ -18,8 +18,19 @@
 	CSW = $36
 	KSW = $38
 
+
+
+
 	PCL=$3A
 	PCH=$3B
+	A1L=$3C
+	A1H=$3D
+	A2L=$3E
+	A2H=$3F
+	A3L=$40
+	A3H=$41
+	A4L=$42
+	A4H=$43
 
 	;; SHASUM locations
 	!addr	SRC = $06
@@ -33,6 +44,10 @@
 	!addr   tmp4 = $fd
 	!addr   tmp5 = $fe
 	!addr   tmp6 = $ff
+
+	;; Ports to read
+	KBD      =   $C000
+	KBDSTRB  =   $C010
 
 	;; Softswitch locations.
 	RESET_80STORE = $C000
@@ -74,14 +89,17 @@
 	RESET_MIXED = $C052
 	SET_MIXED = $C053
 	READ_MIXED = $C01B
-	
+
 	RESET_PAGE2 = $C054
 	SET_PAGE2 = $C055
 	READ_PAGE2 = $C01C
-	
+
 	RESET_HIRES = $C056
 	SET_HIRES = $C057
 	READ_HIRES = $C01D
+
+	RESET_AN3 = $C05E
+	SET_AN3 = $C05F
 
 	RESET_INTC8ROM = $CFFF
 
@@ -89,7 +107,7 @@
 	READ_HRAM_BANK2 = $C011
 	READ_HRAMRD = $C012
 	READ_VBL = $C019
-	
+
 	;; Monitor locations.
 	;HOME = $FC58
 	;COUT = $FDED
@@ -99,8 +117,11 @@
 	;PRBYTE = $FDDA
 	;PRNTYX = $F940
 
-	STRINGS = $7000
-	!set LASTSTRING = $7000
+	AUXMOVE = $C311	        ; Move from (A1L/H - A2L/H) to (A4L/H) Carry set: main->aux
+	MOVE = $FE2C 		; Move to (A4L/H) from (A1L/H) through (A2L,H)
+
+	STRINGS = $8000
+	!set LASTSTRING = STRINGS
 
 	;; Printing and error macros.
 	!src "macros.asm"
@@ -109,7 +130,7 @@ main:
 	;; Initialize stack to the top.
 	ldx #$ff
 	txs
-	
+
 	jsr standard_fixup
 	jsr RESET
 
@@ -121,6 +142,8 @@ main:
 	;; Detection and reporting of model and memory.
 	!src "detect.asm"
 
+	; SKIP = 1
+	!ifndef SKIP {
 	;; Language card tests.
 	jsr LANGCARDTESTS
 
@@ -132,6 +155,14 @@ main:
 
 	;; ROM SHA-1 checks.
 	;; jsr SHASUMTESTS - do this later, because it's SLOW!
+
+	;; Keyboard tests: for now, just check we can press 'Y', 'N', SPACE, or ESC
+	jsr KEYBOARDTESTS
+
+	} ; if SKIP
+
+	;; Video tests.
+	jsr VIDEOTESTS
 
 end:
 	+print
@@ -145,6 +176,8 @@ end:
 	!src "softswitch.asm"
 	!src "resetall.asm"
 	!src "monitor-routines.asm"
+	!src "keyboard.asm"
+	!src "video.asm"
 	;!src "shasumtests.asm"
 
 print
@@ -238,7 +271,7 @@ standard_fixup:
 	rts
 
 COPYTOAUX
-	;; Use AUXMOVE routine to copy the whole program to AUX memory.
+	;; Use our own versino of AUXMOVE routine to copy the whole program to AUX memory.
 	jsr RESETALL
 	lda #<START
 	sta SRC
@@ -259,7 +292,7 @@ COPYTOAUX
 	bne -
 	sta RESET_RAMWRT
 	rts
-	
+
 ;	!if * != STRINGS {
 ;	!error "Expected STRINGS to be ", *
 ;	}

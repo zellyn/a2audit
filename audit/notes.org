@@ -24,6 +24,7 @@ D76E 65
 * TODOs and Links to things to test
 ** TODO [[https://groups.google.com/d/msg/comp.sys.apple2/RMnus8p6xp8/TDfD2HVtDwAJ][csa2: question on HGR behavior with enhanced 128K Apple //e]]
 ** TODO Check whether c8-cf sticks after reading c3xx but c3 is only active due to the whole c3 ROM switch
+** TODO Check whether reading cfff in various states returns floating bus or ROM contents
 * Language card operation
 
 
@@ -202,3 +203,11 @@ Lores80 color differences: UtA2e: 8-29
 
 
 
+* Keyboard
+
+| Y     | 217 | D9 | 59 | 11011001 |
+| y     | 249 | F9 | 79 | 11111001 |
+| N     | 206 | CE | 4E | 11001110 |
+| n     | 238 | EE | 6E | 11101110 |
+| SPACE | 160 | A0 | 20 | 10100000 |
+| ESC   | 155 | 9B | 1B | 10011011 |
