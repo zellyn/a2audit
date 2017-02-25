@@ -275,6 +275,22 @@ VIDEOTESTS
 	!byte 0, 0, $dd, $dd, $ee, $bb, $dd, $77, 0, .md_hires | .md_80col | .md_an3off
 	!byte 0, 0, $ee, $ee, $77, $dd, $ee, $bb, 0, .md_hires | .md_80col | .md_an3off
 
+	;; DBL LORES patterns and corresponding DBL HIRES patterns.
+	!byte $88, $88, $11, $11, $88, $22, $11, $44, .md_80col | .md_an3off, .md_hires | .md_80col | .md_an3off
+	!byte $11, $11, $22, $22, $11, $44, $22, $88, .md_80col | .md_an3off, .md_hires | .md_80col | .md_an3off
+	!byte $99, $99, $33, $33, $99, $66, $33, $cc, .md_80col | .md_an3off, .md_hires | .md_80col | .md_an3off
+	!byte $22, $22, $44, $44, $22, $88, $44, $11, .md_80col | .md_an3off, .md_hires | .md_80col | .md_an3off
+	!byte $aa, $aa, $55, $55, $aa, $aa, $55, $55, .md_80col | .md_an3off, .md_hires | .md_80col | .md_an3off
+	!byte $33, $33, $66, $66, $33, $cc, $66, $99, .md_80col | .md_an3off, .md_hires | .md_80col | .md_an3off
+	!byte $bb, $bb, $77, $77, $bb, $ee, $77, $dd, .md_80col | .md_an3off, .md_hires | .md_80col | .md_an3off
+	!byte $44, $44, $88, $88, $44, $11, $88, $22, .md_80col | .md_an3off, .md_hires | .md_80col | .md_an3off
+	!byte $cc, $cc, $99, $99, $cc, $33, $99, $66, .md_80col | .md_an3off, .md_hires | .md_80col | .md_an3off
+	!byte $55, $55, $aa, $aa, $55, $55, $aa, $aa, .md_80col | .md_an3off, .md_hires | .md_80col | .md_an3off
+	!byte $dd, $dd, $bb, $bb, $dd, $77, $bb, $ee, .md_80col | .md_an3off, .md_hires | .md_80col | .md_an3off
+	!byte $66, $66, $cc, $cc, $66, $99, $cc, $33, .md_80col | .md_an3off, .md_hires | .md_80col | .md_an3off
+	!byte $ee, $ee, $dd, $dd, $ee, $bb, $dd, $77, .md_80col | .md_an3off, .md_hires | .md_80col | .md_an3off
+	!byte $77, $77, $ee, $ee, $77, $dd, $ee, $bb, .md_80col | .md_an3off, .md_hires | .md_80col | .md_an3off
+
 	!byte $ff
 
 } ;video
