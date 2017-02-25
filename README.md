@@ -50,3 +50,8 @@ This test suite is a step on the way to implementing Apple IIe
 (enhanced) support in
 [OpenEmulator](http://openemulatorproject.github.io/): I may alternate
 adding tests here and features there.
+
+## Contributors
+
+- [Zellyn Hunter](https://github.com/zellyn)
+- [Peter Ferrie ("qkumba")](https://github.com/peterferrie)
