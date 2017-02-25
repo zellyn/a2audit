@@ -47,3 +47,11 @@ This is a the Cxxx-ROM check part of the auxiliary memory data-driven test (see 
 ## E000C
 
 $400 main memory and $300 aux memory seem to write to the same place, which is probably an emulator bug.
+
+## E000D
+
+We tried to put the language card into read bank 1, but failed to read.
+
+## E000E
+
+We tried to put the language card into read ROM, but failed to read.

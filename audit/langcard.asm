@@ -29,10 +29,10 @@ LANGCARDTESTS_NO_CHECK:
 	+prerred
 	sec
 	rts
-	lda #$33
-+	sta $FE1F		; FE1F is $60 in Apple II/plus/e/enhanced
++	lda #$33
+	sta $FE1F		; FE1F is $60 in Apple II/plus/e/enhanced
 	cmp $FE1F
-	beq .dotest
+	beq +
 	+prerr $0005 ;; E0005: We tried to put the language card into read RAM, write RAM, but failed to write.
 	!text "CANNOT WRITE TO LC RAM"
 	+prerred
@@ -46,6 +46,24 @@ LANGCARDTESTS_NO_CHECK:
 	beq +
 	+prerr $0006 ;; E0006: We tried to put the language card into read bank 2, write bank 2, but failed to write.
 	!text "CANNOT WRITE TO LC BANK 2 RAM"
+	+prerred
+	sec
+	rts
++	lda $C08B		; Read and write bank 1 with single access (only one needed if banked in already)
+	lda #$11
+	cmp $D17B
+	beq +
+	+prerr $000D ;; E000D: We tried to put the language card into read bank 1, but failed to read.
+	!text "CANNOT READ FROM LC BANK 1 RAM"
+	+prerred
+	sec
+	rts
++	lda $C081		; Read ROM with single access (only one needed to bank out)
+	lda #$53
+	cmp $D17B
+	beq .dotest
+	+prerr $000E ;; E000E: We tried to put the language card into read ROM, but failed to read.
+	!text "CANNOT READ FROM ROM"
 	+prerred
 	sec
 	rts
