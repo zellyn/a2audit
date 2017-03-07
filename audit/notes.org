@@ -211,3 +211,6 @@ Lores80 color differences: UtA2e: 8-29
 | n     | 238 | EE | 6E | 11101110 |
 | SPACE | 160 | A0 | 20 | 10100000 |
 | ESC   | 155 | 9B | 1B | 10011011 |
+* Fixes inspired
+- apple2js: https://github.com/whscullin/apple2js/pull/4
+- mame: https://github.com/mamedev/mame/commit/8bf4bac0c1d3283f7df3caf8a0f08320458b9952
