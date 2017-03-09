@@ -4,9 +4,10 @@ export ACME="$HOME/gh/acme/ACME_Lib"
 
 acme audit.asm
 
-# Build audit.dsk with diskii (bit.ly/a2diskii), on a Super-Mon disk
-# =====================================================================
+# Build audit.dsk with diskii (bit.ly/a2diskii), on a "Standard Delivery" disk
+# ============================================================================
 
+# Old NakedOS version:
 # cp ../dsk/supermon20.dsk audit.dsk
 # # FHELLO: load file DF02 at 0x6000.
 # diskii nakedos mkhello audit.dsk DF02
