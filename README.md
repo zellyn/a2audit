@@ -7,6 +7,8 @@ RAM configuration, and behavior.
 The file to download and try is
 [audit/audit.dsk](https://github.com/zellyn/a2audit/blob/master/audit/audit.dsk).
 
+![Seagull Srs Micro Software](img/seagull-srs.png)
+
 Eventually, it should comprise a complete emulator test suite,
 enabling emulator writers to systematically identify and eliminate
 software-testable differences from real hardware. If a difference
