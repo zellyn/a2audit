@@ -304,6 +304,8 @@ LANGCARDTESTS_NO_CHECK:
 	!byte $53, $60, $54, $22, $61		;
 	!byte $01, $01, $ff			; Read $C081, $C081 (read ROM, write RAM bank 2)
 	!byte $53, $60, $11, $54, $61		;
+	!byte $01, $01, $81, $ff		; Read $C081, $C081, write $C081 (read ROM, write RAM bank bank 2)
+	!byte $53, $60, $11, $54, $61		; See https://github.com/zellyn/a2audit/issues/3
 	!byte $0b, $ff				; Read $C08B (read RAM bank 1, no write)
 	!byte $11, $33, $11, $22, $33		;
 	!byte $03, $ff				; Read $C083 (read RAM bank 2, no write)
