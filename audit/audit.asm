@@ -6,6 +6,10 @@
 	* = $6000
 	START = *
 
+	;; Major version number
+	VER_MAJOR = 1
+	VER_MINOR = 1
+
 	;; Zero-page locations.
 	SCRATCH = $1
 	SCRATCH2 = $2
@@ -136,8 +140,20 @@ main:
 
 	jsr HOME
 	+print
-	!text "APPLE II AUDIT",$8D,$8D
+	!text "APPLE II AUDIT "
 	+printed
+
+	lda #(VER_MAJOR+'0')
+	jsr COUT
+	lda #'.'
+	jsr COUT
+	lda #VER_MINOR
+	jsr PRBYTE
+
+	lda #$8D
+	jsr COUT
+	lda #$8D
+	jsr COUT
 
 	;; Detection and reporting of model and memory.
 	!src "detect.asm"
