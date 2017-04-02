@@ -1,6 +1,18 @@
 ;;; Apple II audit routine macros.
 ;;; Copyright © 2016 Zellyn Hunter <zellyn@gmail.com>
 
+	;; string/stringed drops a pointer to a string.
+	!macro string {
+	!word LASTSTRING
+	!set TEMP = *
+	* = LASTSTRING
+	}
+	!macro stringed {
+	!byte 0
+	!set LASTSTRING=*
+	* = TEMP
+	}
+
 	!macro print {
 	jsr LASTSTRING
 	!set TEMP = *

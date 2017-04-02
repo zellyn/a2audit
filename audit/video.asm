@@ -20,8 +20,23 @@ VIDEOTESTS
 
 	jsr .first
 
+;;; Main loop over test data. Quit when high addr of text to be printed is $ff.
 ---
 	jsr RESETALL
+	jsr HOME
+	jsr .this
+	sta getch+1
+	jsr .next
+	sta getch+2
+	cmp #$ff
+	beq .done
+	jsr getch
+
+	jsr YNESCSPACE
+	cmp #$9B
+	beq .done
+
+	jsr .next
 	jsr .load400aux
 	jsr .load400
 
@@ -29,7 +44,8 @@ VIDEOTESTS
 	jsr .load2000
 
 	ldx #0
---
+
+--	;; Loop back and forth between modes as "space" is pressed.
 	jsr .setswitches
 	txa
 	eor #1
@@ -247,51 +263,170 @@ VIDEOTESTS
 	.md_page2     = $40
 	.md_80store   = $80
 
+foo	!text "FOOBAR",$8D,$0
+
 .testdata
 	;; Aux lores even/odd, lores even/odd, aux hires even/odd, hires even/odd, mode 1, mode 2
 
 	;; 40COL and 80COL Text, inverse space.
+	+string
+	!text "40-COL AND 80-COL TEXT INVERSE SPACES:",$8D
+	!text "ALL WHITE, WITH 1/80 SHIFT LEFT"
+	+stringed
 	!byte $20, $20, $20, $20, 0, 0, 0, 0, .md_text, .md_text | .md_80col
 
 	;; LORES patterns that correspond to HIRES patterns.
+	+string
+	!text "LORES VIOLET, HIRES VIOLET:SAME"
+	+stringed
 	!byte 0, 0, $33, $33, 0, 0, $55, $2a, 0, .md_hires ; purple
+	+string
+	!text "LORES GREEN, HIRES GREEN:SAME"
+	+stringed
 	!byte 0, 0, $cc, $cc, 0, 0, $2a, $55, 0, .md_hires ; green
+	+string
+	!text "LORES LIGHT BLUE, HIRES LIGHT BLUE:SAME"
+	+stringed
 	!byte 0, 0, $66, $66, 0, 0, $d5, $aa, 0, .md_hires ; light blue
+	+string
+	!text "LORES ORANGE, HIRES ORANGE:LEFT",$8D
+	!text "EDGE SHIFTS RIGHT A COUPLE OF PIXELS"
+	+stringed
 	!byte 0, 0, $99, $99, 0, 0, $aa, $d5, 0, .md_hires ; orange - left column should budge
 
 	;; LORES patterns and corresponding DBL HIRES patterns.
+	+string
+	!text "LORES AND DBL HIRES DARK MAGENTA:SHIFT",$8D
+	!text "LEFT"
+	+stringed
 	!byte 0, 0, $11, $11, $88, $22, $11, $44, 0, .md_hires | .md_80col | .md_an3off
+	+string
+	!text "LORES AND DBL HIRES DARK BLUE:SHIFT LEFT"
+	+stringed
 	!byte 0, 0, $22, $22, $11, $44, $22, $88, 0, .md_hires | .md_80col | .md_an3off
+	+string
+	!text "LORES AND DBL HIRES VIOLET:SHIFT LEFT"
+	+stringed
 	!byte 0, 0, $33, $33, $99, $66, $33, $cc, 0, .md_hires | .md_80col | .md_an3off
+	+string
+	!text "LORES AND DBL HIRES DARK BLUEGREEN:",$8D
+	!text "SHIFT LEFT"
+	+stringed
 	!byte 0, 0, $44, $44, $22, $88, $44, $11, 0, .md_hires | .md_80col | .md_an3off
+	+string
+	!text "LORES AND DBL HIRES GRAY $5:",$8D
+	!text "SHIFT LEFT"
+	+stringed
 	!byte 0, 0, $55, $55, $aa, $aa, $55, $55, 0, .md_hires | .md_80col | .md_an3off
+	+string
+	!text "LORES AND DBL HIRES BLUE:",$8D
+	!text "SHIFT LEFT"
+	+stringed
 	!byte 0, 0, $66, $66, $33, $cc, $66, $99, 0, .md_hires | .md_80col | .md_an3off
+	+string
+	!text "LORES AND DBL HIRES LIGHT BLUE:",$8D
+	!text "SHIFT LEFT"
+	+stringed
 	!byte 0, 0, $77, $77, $bb, $ee, $77, $dd, 0, .md_hires | .md_80col | .md_an3off
+	+string
+	!text "LORES AND DBL HIRES DARK BROWN:",$8D
+	!text "SHIFT LEFT"
+	+stringed
 	!byte 0, 0, $88, $88, $44, $11, $88, $22, 0, .md_hires | .md_80col | .md_an3off
+	+string
+	!text "LORES AND DBL HIRES ORANGE:",$8D
+	!text "SHIFT LEFT"
+	+stringed
 	!byte 0, 0, $99, $99, $cc, $33, $99, $66, 0, .md_hires | .md_80col | .md_an3off
+	+string
+	!text "LORES AND DBL HIRES GRAY $A:",$8D
+	!text "SHIFT LEFT"
+	+stringed
 	!byte 0, 0, $aa, $aa, $55, $55, $aa, $aa, 0, .md_hires | .md_80col | .md_an3off
+	+string
+	!text "LORES AND DBL HIRES LIGHT MAGENTA:",$8D
+	!text "SHIFT LEFT"
+	+stringed
 	!byte 0, 0, $bb, $bb, $dd, $77, $bb, $ee, 0, .md_hires | .md_80col | .md_an3off
+	+string
+	!text "LORES AND DBL HIRES GREEN:",$8D
+	!text "SHIFT LEFT"
+	+stringed
 	!byte 0, 0, $cc, $cc, $66, $99, $cc, $33, 0, .md_hires | .md_80col | .md_an3off
+	+string
+	!text "LORES AND DBL HIRES LIGHT BROWN:",$8D
+	!text "SHIFT LEFT"
+	+stringed
 	!byte 0, 0, $dd, $dd, $ee, $bb, $dd, $77, 0, .md_hires | .md_80col | .md_an3off
+	+string
+	!text "LORES AND DBL HIRES LIGHT BLUEGREEN:",$8D
+	!text "SHIFT LEFT"
+	+stringed
 	!byte 0, 0, $ee, $ee, $77, $dd, $ee, $bb, 0, .md_hires | .md_80col | .md_an3off
 
 	;; DBL LORES patterns and corresponding DBL HIRES patterns.
+	+string
+	!text "DBL LORES AND DBL HIRES DARK MAGENTA:",$8D
+	!text "SAME"
+	+stringed
 	!byte $88, $88, $11, $11, $88, $22, $11, $44, .md_80col | .md_an3off, .md_hires | .md_80col | .md_an3off
+	+string
+	!text "DBL LORES AND DBL HIRES DARK BLUE:SAME"
+	+stringed
 	!byte $11, $11, $22, $22, $11, $44, $22, $88, .md_80col | .md_an3off, .md_hires | .md_80col | .md_an3off
+	+string
+	!text "DBL LORES AND DBL HIRES VIOLET:SAME"
+	+stringed
 	!byte $99, $99, $33, $33, $99, $66, $33, $cc, .md_80col | .md_an3off, .md_hires | .md_80col | .md_an3off
+	+string
+	!text "DBL LORES AND DBL HIRES DARK BLUEGREEN:",$8D
+	!text "SAME"
+	+stringed
 	!byte $22, $22, $44, $44, $22, $88, $44, $11, .md_80col | .md_an3off, .md_hires | .md_80col | .md_an3off
+	+string
+	!text "DBL LORES AND DBL HIRES GRAY $5:SAME"
+	+stringed
 	!byte $aa, $aa, $55, $55, $aa, $aa, $55, $55, .md_80col | .md_an3off, .md_hires | .md_80col | .md_an3off
+	+string
+	!text "DBL LORES AND DBL HIRES BLUE:SAME"
+	+stringed
 	!byte $33, $33, $66, $66, $33, $cc, $66, $99, .md_80col | .md_an3off, .md_hires | .md_80col | .md_an3off
+	+string
+	!text "DBL LORES AND DBL HIRES LIGHT BLUE:SAME"
+	+stringed
 	!byte $bb, $bb, $77, $77, $bb, $ee, $77, $dd, .md_80col | .md_an3off, .md_hires | .md_80col | .md_an3off
+	+string
+	!text "DBL LORES AND DBL HIRES DARK BROWN:SAME"
+	+stringed
 	!byte $44, $44, $88, $88, $44, $11, $88, $22, .md_80col | .md_an3off, .md_hires | .md_80col | .md_an3off
+	+string
+	!text "DBL LORES AND DBL HIRES ORANGE:SAME"
+	+stringed
 	!byte $cc, $cc, $99, $99, $cc, $33, $99, $66, .md_80col | .md_an3off, .md_hires | .md_80col | .md_an3off
+	+string
+	!text "DBL LORES AND DBL HIRES GRAY $A:SAME"
+	+stringed
 	!byte $55, $55, $aa, $aa, $55, $55, $aa, $aa, .md_80col | .md_an3off, .md_hires | .md_80col | .md_an3off
+	+string
+	!text "DBL LORES AND DBL HIRES LIGHT MAGENTA:",$8D
+	!text "SAME"
+	+stringed
 	!byte $dd, $dd, $bb, $bb, $dd, $77, $bb, $ee, .md_80col | .md_an3off, .md_hires | .md_80col | .md_an3off
+	+string
+	!text "DBL LORES AND DBL HIRES GREEN:SAME"
+	+stringed
 	!byte $66, $66, $cc, $cc, $66, $99, $cc, $33, .md_80col | .md_an3off, .md_hires | .md_80col | .md_an3off
+	+string
+	!text "DBL LORES AND DBL HIRES LIGHT BROWN:SAME"
+	+stringed
 	!byte $ee, $ee, $dd, $dd, $ee, $bb, $dd, $77, .md_80col | .md_an3off, .md_hires | .md_80col | .md_an3off
+	+string
+	!text "DBL LORES AND DBL HIRES LIGHT BLUEGREEN:",$8D
+	!text "SAME"
+	+stringed
 	!byte $77, $77, $ee, $ee, $77, $dd, $ee, $bb, .md_80col | .md_an3off, .md_hires | .md_80col | .md_an3off
 
-	!byte $ff
+	!byte $ff, $ff
 
 } ;video
 
