@@ -426,6 +426,29 @@ foo	!text "FOOBAR",$8D,$0
 	+stringed
 	!byte $77, $77, $ee, $ee, $77, $dd, $ee, $bb, .md_80col | .md_an3off, .md_hires | .md_80col | .md_an3off
 
+	;; Tests that LORES stays the same in 80COL mode if AN3 is on.
+	;; OpenEmulator bug: https://github.com/OpenEmulatorProject/libemulation/issues/24
+
+	+string
+	!text "LIGHT BROWN:LORES VS 80-COL+AN3 ON.",$8D,$8D
+	!text "SHOULD STAY IN 40-COL GRAPHICS MODE AND",$8D
+	!text "*NOT* SHOW BLACK VERTICAL STRIPES OF",$8D
+	!text "80-COL AUXMEM."
+	+stringed
+	!byte 0, 0, $dd, $dd, $0, $0, $0, $0, 0, .md_80col
+
+	+string
+	!text "LIGHT MAGENTA:LORES VS 80-COL+AN3 ON,",$8D
+	!text "MIXED GRAPHICS AND TEXT",$8D
+	!text "GRAPHICS PART SHOULD STAY IN 40-COL",$8D
+	!text "GRAPHICS MODE AND *NOT* SHOW VERTICAL",$8D
+	!text "STRIPES OF 80-COL AUXMEM.",$8D,$8D
+	!text "BOTTOM FOUR ROWS SHOULD START OUT AS",$8D
+	!text "SEMI-COLONS (;;;) AND SWITCH TO 80-COL",$8D
+	!text "ASTERISKS AND SEMI-COLONS (*;*;*;)"
+	+stringed
+	!byte $aa, $aa, $bb, $bb, $0, $0, $0, $0, .md_mixed, .md_mixed | .md_80col
+
 	!byte $ff, $ff
 
 } ;video
