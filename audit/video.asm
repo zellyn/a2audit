@@ -268,6 +268,7 @@ foo	!text "FOOBAR",$8D,$0
 .testdata
 	;; Aux lores even/odd, lores even/odd, aux hires even/odd, hires even/odd, mode 1, mode 2
 
+	!ifndef SKIP {
 	;; 40COL and 80COL Text, inverse space.
 	+string
 	!text "40-COL AND 80-COL TEXT INVERSE SPACES:",$8D
@@ -425,6 +426,8 @@ foo	!text "FOOBAR",$8D,$0
 	!text "SAME"
 	+stringed
 	!byte $77, $77, $ee, $ee, $77, $dd, $ee, $bb, .md_80col | .md_an3off, .md_hires | .md_80col | .md_an3off
+
+	} ; ifndef SKIP
 
 	;; Tests that LORES stays the same in 80COL mode if AN3 is on.
 	;; OpenEmulator bug: https://github.com/OpenEmulatorProject/libemulation/issues/24

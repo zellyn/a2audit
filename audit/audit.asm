@@ -158,7 +158,6 @@ main:
 	;; Detection and reporting of model and memory.
 	!src "detect.asm"
 
-	; SKIP = 1
 	!ifndef SKIP {
 	;; Language card tests.
 	jsr LANGCARDTESTS
@@ -175,7 +174,7 @@ main:
 	;; Keyboard tests: for now, just check we can press 'Y', 'N', SPACE, or ESC
 	jsr KEYBOARDTESTS
 
-	} ; if SKIP
+	} ; ifndef SKIP
 
 	;; Video tests.
 	jsr VIDEOTESTS
