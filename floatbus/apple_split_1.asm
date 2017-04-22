@@ -1,5 +1,6 @@
 ;;; Assembly conversion of listings 1 and 2 from
 ;;; http://rich12345.tripod.com/aiivideo/softalk.html#list2
+;;; https://archive.org/stream/softalkv3n02oct1982#page/54/mode/2up
 
 	!convtab <apple ii/convtab.bin>
 	!to "apple_split_1.o", plain
@@ -14,10 +15,10 @@ main:
 
 ;;; 100 HOME
 	JSR HOME
-	
+
 ;;; 200 FOR K = 0 TO 39
 	LDX #39
-loop:	
+loop:
 ;;; 210 POKE 1448 + K, 14 * 16
 	LDA #$E0
 	STA 0x5a8,X
@@ -37,7 +38,7 @@ loop:
 	STA V2
 	LDA #25
 	JSR VLINE
-	
+
 ;;; 250 NEXT K
 	DEX
 	BPL loop
@@ -46,7 +47,7 @@ loop:
 ;;; 310 PRINT "APPLE II"
 
 	LDX #7
-msgloop:	
+msgloop:
 	LDA message,X
 	STA MSGPOS,X
 	DEX
@@ -61,20 +62,20 @@ forever:
 	jmp forever
 
 message:	!text "APPLE II"
-sync:	
+sync:
 	STA $C052
 	LDA #$E0
 loop1:
 	LDX #$04
-loop2:	
+loop2:
 	CMP $C051
 	BNE loop1
 	DEX
 	BNE loop2
 	LDA #$A0
-loop3:	
+loop3:
 	LDX #$04
-loop4:	
+loop4:
 	CMP $C050
 	BNE loop3
 	DEX
