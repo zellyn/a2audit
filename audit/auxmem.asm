@@ -24,8 +24,8 @@
 	.region = tmp4
 	.actual = tmp1
 	.desired = tmp2
-	
-	
+
+
 AUXMEMTESTS
 	lda #0
 	sta AUXRESULT
@@ -55,7 +55,7 @@ AUXMEMTESTS
 	sta LCRESULT1
 	lda #0
 	sta LCRESULT
-	
+
 	;; Store distinct values in RAM areas, to see if they stay safe.
 	lda $C08B		; Read and write bank 1
 	lda $C08B
@@ -68,7 +68,7 @@ AUXMEMTESTS
 	sta $D17B
 
 	jsr zptoaux
-	
+
 	sta SET_ALTZP
 	jsr LANGCARDTESTS_NO_CHECK
 	sta RESET_ALTZP
@@ -83,7 +83,7 @@ AUXMEMTESTS
 	+prerred
 	sec
 	rts
-	
+
 	;; Check that the stuff we stashed in main RAM was unaffected.
 +
 	lda $C088		; Read bank 1
@@ -147,7 +147,7 @@ AUXMEMTESTS
 	lda #>.auxtests
 	sta PCH
 ;;; Main data-drive-test loop.
-.ddloop				
+.ddloop
 	ldy #0
 	lda (PCL),Y
 	beq .success
@@ -171,7 +171,7 @@ AUXMEMTESTS
 	sta RESET_ALTZP
 	sta RESET_RAMWRT
 	sta RESET_RAMRD
-	
+
 	sec
 	sbc #2
 	bcs .initloop
@@ -205,7 +205,7 @@ AUXMEMTESTS
 	sta .checkdata+1
 
 	;; First checkdata byte is for Cxxx tests.
-	jsr .nextcheck
+	jsr NEXTCHECK
 	bmi +
 	jsr .checkCxxx
 
@@ -214,11 +214,11 @@ AUXMEMTESTS
 	jsr RESETALL
 	stx .checkdata
 	sty .checkdata+1
-	
+
 	;; Do the next part twice.
 	lda #1
 	sta .ismain
-	jsr .nextcheck
+	jsr NEXTCHECK
 .checkloop			; Loop twice here: once for main, once for aux.
 	lda #4
 	sta .region
@@ -241,7 +241,7 @@ AUXMEMTESTS
 	beq .memlp
 
 .memlpinc
-	jsr .nextcheck
+	jsr NEXTCHECK
 	dec .region		; loop four times: zero, main, text, hires
 	bne .memlp
 
@@ -257,7 +257,7 @@ AUXMEMTESTS
 	sty .checkdata+1
 	sta .ismain
 	jmp .checkloop
-	
+
 .checkdone
 	;; Jump PCL,PCH to next test, and loop.
 	ldx .checkdata
@@ -285,7 +285,7 @@ AUXMEMTESTS
 	;; X = index of memory location
 	;; A = actual
 	;; Y = desired | (high bit set if main, unset=aux)
-	
+
 	jsr RESETALL
 
 	sta .actual
@@ -330,10 +330,10 @@ AUXMEMTESTS
 	+prerr $000A ;; E000A: This is a data-driven test of main and auxiliary memory softswitch operation. We initialize $FF, $100, $200, $3FF, $427, $7FF, $800, $1FFF, $2000, $3FFF, $4000, $5FFF, and $BFFF in main RAM to value 1, and in auxiliary RAM to value 3. Then, we perform a testdata-driven sequence of instructions. Finally we (try to) increment all test locations. Then we test the expected values of the test locations in main and auxiliary memory. For more information on the operation of the auxiliary memory soft-switches, see Understanding the Apple IIe, by James Fielding Sather, Pg 5-22 to 5-28.
 	!text "FOLLOWED BY INC OF TEST LOCATIONS. SEE"
 	+prerred
-	
+
 	sec
 	rts
-	
+
 ;;; Check that the expected ROM areas are visible.
 .checkCxxx
 	.gotCxxx = tmp0
@@ -367,7 +367,7 @@ AUXMEMTESTS
 	+printed
 	lda .gotCxxx
 	jsr .printCxxxBits
-	
+
 	+prerr $000B ;; E000B: This is a the Cxxx-ROM check part of the auxiliary memory data-driven test (see E000A for a description of the other part). After a full reset, we perform a testdata-driven sequence of instructions. Finally we check which parts of Cxxx ROM seem to be visible. We check C100-C2FF, C300-C3FF, C400-C7FF (which should be the same as C100-C2FF), and C800-CFFE. For more details, see Understanding the Apple IIe, by James Fielding Sather, Pg 5-28.
 	!text "CXXX ROM TEST FAILED"
 	+prerred
@@ -377,7 +377,7 @@ AUXMEMTESTS
 	pla
 	sec
 	rts
-	
+
 .checkCxxxDone
 	rts
 
@@ -462,47 +462,14 @@ AUXMEMTESTS
 	!text "ROM",$8D
 	+printed
 	rts
-	
-;;; Increment .checkdata pointer to the next memory location, and load
-;;; it into the accumulator. X and Y are preserved.
-.nextcheck
-	inc .checkdata
-	bne +
-	inc .checkdata+1
-+	sty SCRATCH
-	ldy #0
-	lda (.checkdata),y
-	ldy SCRATCH
-	ora #0
-	rts
 
 ;;; Print out the sequence of instructions at PCL,PCH, until we hit a JSR.
 .printtest
 	+print
 	!text "AFTER SEQUENCE",$8D
 	+printed
--
-	ldy #0
-	lda (PCL),y
-	cmp #$20
-	beq +++
-	lda #'-'
-	jsr COUT
-	lda #' '
-	jsr COUT
-	ldx #0
-	lda (PCL,x)
-	jsr $f88e
-	ldx #3
-	jsr $f8ea
-	jsr $f953
-	sta PCL
-	sty PCH
-	lda #$8D
-	jsr COUT
-	jmp -
-+++	rts
-	
+	jmp PRINTTEST
+
 ;;; Copy zero page to aux mem. Assumes zp pointing at main mem, and leaves it that way.
 zptoaux
 	ldx #0
@@ -529,7 +496,7 @@ zpfromaux
 .auxtests
 
 	;; Our four basic tests --------------------------------------
-	
+
 	;; Test 1: everything reset.
 	lda #1
 	jsr .check
@@ -546,7 +513,7 @@ zpfromaux
 	sta SET_RAMRD
 	jsr .check
 	!byte .C_skip, 2, 4, 4, 4, 3, 3, 3, 3
-	
+
 	;; Test 4: write to AUX, read from AUX, everything else normal.
 	lda #4
 	sta SET_RAMRD
@@ -556,7 +523,7 @@ zpfromaux
 
 	;; Our four basic tests, but with 80STORE ON -----------------
 	;; (400-7ff is pointing at main mem)
-	
+
 	;; Test 5: everything reset.
 	lda #5
 	sta SET_80STORE
@@ -576,7 +543,7 @@ zpfromaux
 	sta SET_80STORE
 	jsr .check
 	!byte .C_skip, 2, 4, 2, 4, 3, 3, 3, 3
-	
+
 	;; Test 8: read and write aux
 	lda #8
 	sta SET_RAMRD
@@ -587,7 +554,7 @@ zpfromaux
 
 	;; Our four basic tests, but with 80STORE and PAGE2 ON -------
 	;; (400-7ff is pointing at aux mem)
-	
+
 	;; Test 9: everything reset.
 	lda #9
 	sta SET_80STORE
@@ -610,7 +577,7 @@ zpfromaux
 	sta SET_PAGE2
 	jsr .check
 	!byte .C_skip, 2, 4, 1, 4, 3, 3, 4, 3
-	
+
 	;; Test C: read and write aux
 	lda #$c
 	sta SET_RAMRD
@@ -622,7 +589,7 @@ zpfromaux
 
 	;; Our four basic tests, but with 80STORE and HIRES ON -------
 	;; (400-7ff and 2000-3fff are pointing at main mem)
-	
+
 	;; Test D: everything reset.
 	lda #$d
 	sta SET_80STORE
@@ -645,7 +612,7 @@ zpfromaux
 	sta SET_HIRES
 	jsr .check
 	!byte .C_skip, 2, 4, 2, 2, 3, 3, 3, 3
-	
+
 	;; Test 10: read and write aux
 	lda #$10
 	sta SET_RAMRD
@@ -683,7 +650,7 @@ zpfromaux
 	sta SET_PAGE2
 	jsr .check
 	!byte .C_skip, 2, 4, 1, 1, 3, 3, 4, 4
-	
+
 	;; Test 14: read and write aux
 	lda #$14
 	sta SET_RAMRD

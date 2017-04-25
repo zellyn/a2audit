@@ -193,6 +193,7 @@ end:
 	!src "monitor-routines.asm"
 	!src "keyboard.asm"
 	!src "video.asm"
+	!src "printtest.asm"
 	;!src "shasumtests.asm"
 
 print
