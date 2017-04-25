@@ -8,7 +8,7 @@
 
 	;; Major version number
 	VER_MAJOR = 1
-	VER_MINOR = 5
+	VER_MINOR = 6
 
 	;; Zero-page locations.
 	SCRATCH = $1

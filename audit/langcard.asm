@@ -280,10 +280,17 @@ LANGCARDTESTS_NO_CHECK:
 	!byte $53, $60, $11, $54, $61		;
 						;
 	lda $C081				; Read $C081, $C081, write $C081 (read ROM, write RAM bank bank 2)
-	lda $C081				;
+	lda $C081				; See https://github.com/zellyn/a2audit/issues/3
 	sta $C081				;
 	jsr .test				;
-	!byte $53, $60, $11, $54, $61		; See https://github.com/zellyn/a2audit/issues/3
+	!byte $53, $60, $11, $54, $61		;
+						;
+	lda $C081				; Read $C081, $C081; write $C081, $C081
+	lda $C081				; See https://github.com/zellyn/a2audit/issues/4
+	sta $C081				;
+	sta $C081				;
+	jsr .test				;
+	!byte $53, $60, $11, $54, $61		;
 						;
 	lda $C08B				; Read $C08B (read RAM bank 1, no write)
 	jsr .test				;
@@ -321,8 +328,8 @@ LANGCARDTESTS_NO_CHECK:
 	!byte $11, $33, $11, $22, $33		;
 						;
 	clc					; Read $C083, $C083 (read/write RAM bank 2)
-	ldx #0					;
-	inc $C083,x				; Uses "6502 false read"
+	ldx #0					; Uses "6502 false read"
+	inc $C083,x				;
 	jsr .test				;
 	!byte $23, $34, $11, $23, $34		;
 						;
