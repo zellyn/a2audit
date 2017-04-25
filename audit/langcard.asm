@@ -322,7 +322,7 @@ LANGCARDTESTS_NO_CHECK:
 						;
 	clc					; Read $C083, $C083 (read/write RAM bank 2)
 	ldx #0					;
-	cmp $C083,x				; Uses "6502 false read"
+	inc $C083,x				; Uses "6502 false read"
 	jsr .test				;
 	!byte $23, $34, $11, $23, $34		;
 						;
