@@ -320,7 +320,13 @@ LANGCARDTESTS_NO_CHECK:
 	jsr .test				;
 	!byte $11, $33, $11, $22, $33		;
 						;
-	!byte 0
+	clc					; Read $C083, $C083 (read/write RAM bank 2)
+	ldx #0					;
+	cmp $C083,x				; Uses "6502 false read"
+	jsr .test				;
+	!byte $23, $34, $11, $23, $34		;
+						;
+	!byte 0					; End of tests
 
 	nop			; Provide clean break after data when viewing disassembly
 	nop
