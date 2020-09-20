@@ -4,7 +4,7 @@ export ACME="$HOME/gh/acme/ACME_Lib"
 
 if [[ "${SKIP-}" == "" ]]
 then
-    acme audit.asm
+    acme -r audit.lst audit.asm
 else
     acme -DSKIP=1 audit.asm
 fi
