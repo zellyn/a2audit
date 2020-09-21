@@ -57,3 +57,5 @@ adding tests here and features there.
 
 - [Zellyn Hunter](https://github.com/zellyn)
 - [Peter Ferrie ("qkumba")](https://github.com/peterferrie)
+- [Cedric Beust](https://github.com/cbeust)
+
