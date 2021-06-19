@@ -28,36 +28,40 @@ grep -h '+prerra\? .*;;' *.asm | awk -F' ;; ' '{print $2}' | sort | sed 's|\(E..
 \
 |' >> ../v0/index.md
 
-# Also run mame? (set ROMPATH to your local variant)
-[[ -z "${ROMPATH-}" ]] && ROMPATH=~/mame/roms/
+# Also run mame? (set MAMEDIR and MAMEBIN to your local variant)
+[[ -z "${MAMEDIR-}" ]] && MAMEDIR="/Users/zellyn/Library/Application Support/Ample"
+[[ -z "${MAMEBIN-}" ]] && MAMEBIN="/Applications/Ample.app/Contents/MacOS/mame64"
 
 # Write audit.o into an OpenEmulator config?
 [[ -z "${TMPLS-}" ]] && TMPLS=~/gh/OpenEmulator-OSX/modules/libemulation/res/templates
 
+DSK=$(realpath ./audit.dsk)
+
 case "${1-none}" in
     "2ee")
-	mame -rompath $ROMPATH apple2ee -flop1 ./audit.dsk -skip_gameinfo
+	# mame64 apple2ee -skip_gameinfo -nosamples -window -resolution 1120x840 -flop1 /Users/zellyn/gh/a2audit/audit/audit.dsk
+	(cd "$MAMEDIR"; "$MAMEBIN" apple2ee -window -flop1 "$DSK" -skip_gameinfo)
 	;;
     "2e")
-	mame -rompath $ROMPATH apple2e -flop1 ./audit.dsk -skip_gameinfo
+	(cd "$MAMEDIR"; "$MAMEBIN" apple2e -window -flop1 "$DSK" -skip_gameinfo)
 	;;
     "2p")
-	mame -rompath $ROMPATH apple2p -flop1 ./audit.dsk -skip_gameinfo
+	(cd "$MAMEDIR"; "$MAMEBIN" apple2p -window -flop1 "$DSK" -skip_gameinfo)
 	;;
     "2")
-	mame -rompath $ROMPATH apple2 -flop1 ./audit.dsk -skip_gameinfo
+	(cd "$MAMEDIR"; "$MAMEBIN" apple2 -window -flop1 "$DSK" -skip_gameinfo)
 	;;
     "2ee-d")
-	mame -rompath $ROMPATH apple2ee -flop1 ./audit.dsk -skip_gameinfo -debug
+	(cd "$MAMEDIR"; "$MAMEBIN" apple2ee -window -flop1 "$DSK" -skip_gameinfo -debug)
 	;;
     "2e-d")
-	mame -rompath $ROMPATH apple2e -flop1 ./audit.dsk -skip_gameinfo -debug
+	(cd "$MAMEDIR"; "$MAMEBIN" apple2e -window -flop1 "$DSK" -skip_gameinfo -debug)
 	;;
     "2p-d")
-	mame -rompath $ROMPATH apple2p -flop1 ./audit.dsk -skip_gameinfo -debug
+	(cd "$MAMEDIR"; "$MAMEBIN" apple2p -window -flop1 "$DSK" -skip_gameinfo -debug)
 	;;
     "2-d")
-	mame -rompath $ROMPATH apple2 -flop1 ./audit.dsk -skip_gameinfo -debug
+	(cd "$MAMEDIR"; "$MAMEBIN" apple2 -window -flop1 "$DSK" -skip_gameinfo -debug)
 	;;
     "oe")
 	(head -c 24576 /dev/zero; cat audit.o; head -c 65536 /dev/zero) | head -c 65536 > $TMPLS/Apple\ II/Apple\ IIe-test.emulation/appleIIe.mainRam.bin
