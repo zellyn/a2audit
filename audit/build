@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 export ACME="$HOME/gh/acme/ACME_Lib"
+ACME_BIN="$HOME/gh/acme/acme"
 
 if [[ "${SKIP-}" == "" ]]
 then
-    acme -r audit.lst audit.asm
+    $ACME_BIN -r audit.lst audit.asm
 else
-    acme -DSKIP=1 audit.asm
+    $ACME_BIN -DSKIP=1 audit.asm
 fi
 
 # Build audit.dsk with diskii (bit.ly/a2diskii), on a "Standard Delivery" disk
