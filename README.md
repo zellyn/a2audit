@@ -53,6 +53,10 @@ This test suite is a step on the way to implementing Apple IIe
 [OpenEmulator](http://openemulatorproject.github.io/): I may alternate
 adding tests here and features there.
 
+## See also
+
+- Tom Charlesworth's [mb-audit](https://github.com/tomcw/mb-audit), a similar tests for MockingBoard sound cards.
+
 ## Contributors
 
 - [Zellyn Hunter](https://github.com/zellyn)
