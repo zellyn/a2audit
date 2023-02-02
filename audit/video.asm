@@ -286,9 +286,9 @@ foo	!text "FOOBAR",$8D,$0
 	+stringed
 	!byte 0, 0, $cc, $cc, 0, 0, $2a, $55, 0, .md_hires ; green
 	+string
-	!text "LORES LIGHT BLUE, HIRES LIGHT BLUE:SAME"
+	!text "LORES BLUE, HIRES BLUE:SAME"
 	+stringed
-	!byte 0, 0, $66, $66, 0, 0, $d5, $aa, 0, .md_hires ; light blue
+	!byte 0, 0, $66, $66, 0, 0, $d5, $aa, 0, .md_hires ; blue
 	+string
 	!text "LORES ORANGE, HIRES ORANGE:LEFT",$8D
 	!text "EDGE SHIFTS RIGHT A COUPLE OF PIXELS"
