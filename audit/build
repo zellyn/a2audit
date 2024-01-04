@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-export ACME="$HOME/gh/acme/ACME_Lib"
-ACME_BIN="$HOME/gh/acme/acme"
+ACME_BIN="$(git rev-parse --show-toplevel)/bin/acme"
 
 if [[ "${SKIP-}" == "" ]]
 then

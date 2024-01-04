@@ -1,0 +1,1 @@
+sources = ["https://github.com/zellyn/retrocomputing-hermit-packages.git", "https://github.com/cashapp/hermit-packages.git"]
