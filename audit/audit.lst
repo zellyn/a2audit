@@ -1,0 +1,3252 @@
+
+; ******** Source: audit.asm
+     1                          ;;; Apple II audit routines
+     2                          ;;; Copyright © 2016 Zellyn Hunter <zellyn@gmail.com>
+     3                          
+     4                          	!convtab <apple ii/convtab.bin>
+     5                          	!to "audit.o", plain
+     6                          	* = $6000
+     7                          	START = *
+     8                          
+     9                          	;; Major version number
+    10                          	VER_MAJOR = 1
+    11                          	VER_MINOR = 6
+    12                          
+    13                          	;; Zero-page locations.
+    14                          	SCRATCH = $1
+    15                          	SCRATCH2 = $2
+    16                          	SCRATCH3 = $3
+    17                          	LCRESULT = $10
+    18                          	LCRESULT1 = $11
+    19                          	AUXRESULT = $12
+    20                          	SOFTSWITCHRESULT = $13
+    21                          
+    22                          	CSW = $36
+    23                          	KSW = $38
+    24                          
+    25                          
+    26                          
+    27                          
+    28                          	PCL=$3A
+    29                          	PCH=$3B
+    30                          	A1L=$3C
+    31                          	A1H=$3D
+    32                          	A2L=$3E
+    33                          	A2H=$3F
+    34                          	A3L=$40
+    35                          	A3H=$41
+    36                          	A4L=$42
+    37                          	A4H=$43
+    38                          
+    39                          	;; SHASUM locations
+    40                          	!addr	SRC = $06
+    41                          	!addr	DST = $08
+    42                          	!addr   SHAINPUT = $eb
+    43                          	!addr   SHALENGTH = $ee
+    44                          	!addr   tmp0 = $f9
+    45                          	!addr   tmp1 = $fa
+    46                          	!addr   tmp2 = $fb
+    47                          	!addr   tmp3 = $fc
+    48                          	!addr   tmp4 = $fd
+    49                          	!addr   tmp5 = $fe
+    50                          	!addr   tmp6 = $ff
+    51                          
+    52                          	;; Ports to read
+    53                          	KBD      =   $C000
+    54                          	KBDSTRB  =   $C010
+    55                          
+    56                          	;; Softswitch locations.
+    57                          	RESET_80STORE = $C000
+    58                          	SET_80STORE = $C001
+    59                          	READ_80STORE = $C018
+    60                          
+    61                          	RESET_RAMRD = $C002
+    62                          	SET_RAMRD = $C003
+    63                          	READ_RAMRD = $C013
+    64                          
+    65                          	RESET_RAMWRT = $C004
+    66                          	SET_RAMWRT = $C005
+    67                          	READ_RAMWRT = $C014
+    68                          
+    69                          	RESET_INTCXROM = $C006
+    70                          	SET_INTCXROM = $C007
+    71                          	READ_INTCXROM = $C015
+    72                          
+    73                          	RESET_ALTZP = $C008
+    74                          	SET_ALTZP = $C009
+    75                          	READ_ALTZP = $C016
+    76                          
+    77                          	RESET_SLOTC3ROM = $C00A
+    78                          	SET_SLOTC3ROM = $C00B
+    79                          	READ_SLOTC3ROM = $C017
+    80                          
+    81                          	RESET_80COL = $C00C
+    82                          	SET_80COL = $C00D
+    83                          	READ_80COL = $C01F
+    84                          
+    85                          	RESET_ALTCHRSET = $C00E
+    86                          	SET_ALTCHRSET = $C00F
+    87                          	READ_ALTCHRSET = $C01E
+    88                          
+    89                          	RESET_TEXT = $C050
+    90                          	SET_TEXT = $C051
+    91                          	READ_TEXT = $C01A
+    92                          
+    93                          	RESET_MIXED = $C052
+    94                          	SET_MIXED = $C053
+    95                          	READ_MIXED = $C01B
+    96                          
+    97                          	RESET_PAGE2 = $C054
+    98                          	SET_PAGE2 = $C055
+    99                          	READ_PAGE2 = $C01C
+   100                          
+   101                          	RESET_HIRES = $C056
+   102                          	SET_HIRES = $C057
+   103                          	READ_HIRES = $C01D
+   104                          
+   105                          	RESET_AN3 = $C05E
+   106                          	SET_AN3 = $C05F
+   107                          
+   108                          	RESET_INTC8ROM = $CFFF
+   109                          
+   110                          	;; Readable things without corresponding set/reset pairs.
+   111                          	READ_HRAM_BANK2 = $C011
+   112                          	READ_HRAMRD = $C012
+   113                          	READ_VBL = $C019
+   114                          
+   115                          	;; Monitor locations.
+   116                          	;HOME = $FC58
+   117                          	;COUT = $FDED
+   118                          	;COUT1 = $FDF0
+   119                          	;KEYIN = $FD1B
+   120                          	;CROUT = $FD8E
+   121                          	;PRBYTE = $FDDA
+   122                          	;PRNTYX = $F940
+   123                          
+   124                          	AUXMOVE = $C311	        ; Move from (A1L/H - A2L/H) to (A4L/H) Carry set: main->aux
+   125                          	MOVE = $FE2C 		; Move to (A4L/H) from (A1L/H) through (A2L,H)
+   126                          
+   127                          	STRINGS = $8000
+   128                          	!set LASTSTRING = STRINGS
+   129                          
+   130                          	;; Printing and error macros.
+
+; ******** Source: macros.asm
+     1                          ;;; Apple II audit routine macros.
+     2                          ;;; Copyright © 2016 Zellyn Hunter <zellyn@gmail.com>
+     3                          
+     4                          	;; string/stringed drops a pointer to a string.
+     5                          	!macro string {
+     6                          	!word LASTSTRING
+     7                          	!set TEMP = *
+     8                          	* = LASTSTRING
+     9                          	}
+    10                          	!macro stringed {
+    11                          	!byte 0
+    12                          	!set LASTSTRING=*
+    13                          	* = TEMP
+    14                          	}
+    15                          
+    16                          	!macro print {
+    17                          	jsr LASTSTRING
+    18                          	!set TEMP = *
+    19                          	* = LASTSTRING
+    20                          	jsr print
+    21                          	}
+    22                          
+    23                          	!macro printed {
+    24                          	!byte 0
+    25                          	!set LASTSTRING=*
+    26                          	* = TEMP
+    27                          	}
+    28                          
+    29                          	!macro prerr NUM {
+    30                          	ldy #>NUM
+    31                          	ldx #<NUM
+    32                          	jsr LASTSTRING
+    33                          	!set TEMP = *
+    34                          	* = LASTSTRING
+    35                          	jsr error
+    36                          	}
+    37                          	!macro prerred {
+    38                          	!byte $8D
+    39                          	+printed
+    40                          	}
+    41                          
+    42                          	;; A version of prerr that also displays the current value of A.
+    43                          	!macro prerra NUM {
+    44                          	ldy #>NUM
+    45                          	ldx #<NUM
+    46                          	jsr LASTSTRING
+    47                          	!set TEMP = *
+    48                          	* = LASTSTRING
+    49                          	jsr errora
+    50                          	}
+
+; ******** Source: audit.asm
+   132                          
+   133                          main:
+   134                          	;; Initialize stack to the top.
+   135  6000 a2ff               	ldx #$ff
+   136  6002 9a                 	txs
+   137                          
+   138  6003 204e73             	jsr standard_fixup
+   139  6006 20d86c             	jsr RESET
+   140                          
+   141  6009 20146c             	jsr HOME
+   142  600c 200080208870       	+print
+   143  8003 c1d0d0ccc5a0c9c9...	!text "APPLE II AUDIT "
+   144  8012 00                 	+printed
+   145                          
+   146  600f a9b1               	lda #(VER_MAJOR+'0')
+   147  6011 209b6c             	jsr COUT
+   148  6014 a9ae               	lda #'.'
+   149  6016 209b6c             	jsr COUT
+   150  6019 a906               	lda #VER_MINOR
+   151  601b 20886c             	jsr PRBYTE
+   152                          
+   153  601e a98d               	lda #$8D
+   154  6020 209b6c             	jsr COUT
+   155  6023 a98d               	lda #$8D
+   156  6025 209b6c             	jsr COUT
+   157                          
+   158                          	;; Detection and reporting of model and memory.
+
+; ******** Source: detect.asm
+     1                          ;;; Apple II Printing of model and memory
+     2                          ;;; Copyright © 2016 Zellyn Hunter <zellyn@gmail.com>
+     3                          
+     4                          	!zone detect {
+     5  6028 20f870             	jsr IDENTIFY
+     6  602b ad82c0             	lda $C082		; Put ROM back in place.
+     7                          
+     8                          	;; Fix up possibly broken MEMORY count on IIe machines.
+     9                          	;; See UtAIIe: 5-38
+    10  602e ade472             	lda MACHINE
+    11  6031 c904               	cmp #IIe
+    12  6033 d05b               	bne +++
+    13                          
+    14  6035 20d26a             	jsr RESETALL
+    15  6038 8d01c0             	sta SET_80STORE
+    16  603b ad57c0             	lda SET_HIRES
+    17  603e ad55c0             	lda SET_PAGE2
+    18  6041 a900               	lda #$00
+    19  6043 8d0004             	sta $400
+    20  6046 a988               	lda #$88
+    21  6048 8d0020             	sta $2000
+    22  604b cd0004             	cmp $400
+    23  604e f033               	beq .has65k
+    24  6050 cd0020             	cmp $2000
+    25  6053 d02b               	bne .has64k
+    26  6055 cd0020             	cmp $2000
+    27  6058 d026               	bne .has64k
+    28                          
+    29                          	;; Okay, it looks like we have 128K. But what if our emulator
+    30                          	;; is just broken, and we're reading and writing the same bank of
+    31                          	;; RAM for both main and aux mem? Let's check for that explicitly.
+    32  605a 20d26a             	jsr RESETALL
+    33  605d a988               	lda #$88
+    34  605f 8d0004             	sta $400
+    35  6062 a989               	lda #$89
+    36  6064 8d05c0             	sta SET_RAMWRT
+    37  6067 8d0004             	sta $400
+    38  606a a988               	lda #$88
+    39  606c 8d04c0             	sta RESET_RAMWRT
+    40  606f cd0004             	cmp $400
+    41  6072 d005               	bne +
+    42  6074 cd0004             	cmp $400
+    43  6077 f00f               	beq ++
+    44                          
+    45  6079 a000a20c20138020...+	+prerr $000C ;; E000C: $400 main memory and $300 aux memory seem to write to the same place, which is probably an emulator bug.
+    46  8016 c2d5c7bacdc1c9ce...	!text "BUG:MAIN AND AUX ARE SAME:PRETEND 64K"
+    47  803b 8d00               	+prerred
+    48                          	
+    49                          .has64k
+    50  6080 a940               	lda #64
+    51  6082 2c                 	!byte $2C
+    52  6083 a941               .has65k lda #65
+    53  6085 8de672             	sta MEMORY
+    54                          
+    55  6088 20d26a             ++	jsr RESETALL
+    56  608b a9c1               	lda #'A'
+    57  608d 8d0004             	sta $400
+    58                          
+    59  6090 203d80208870       +++	+print
+    60  8040 cdc5cdcfd2d9ba     	!text "MEMORY:"
+    61  8047 00                 	+printed
+    62  6093 ade672             	lda MEMORY
+    63  6096 1005               	bpl +
+    64  6098 204880208870       	+print
+    65  804b b1b2b8cb8d         	!text "128K",$8D
+    66  8050 00                 	+printed
+    67  609b f00c               	beq +++
+    68  609d c940               +	cmp #64
+    69  609f 9005               	bcc +
+    70  60a1 205180208870       	+print
+    71  8054 b6b4cb8d           	!text "64K",$8D
+    72  8058 00                 	+printed
+    73  60a4 f003               	beq +++
+    74  60a6 205980208870       +	+print
+    75  805c b4b8cb8d           	!text "48K",$8D
+    76  8060 00                 	+printed
+    77                          +++
+    78  60a9 ade472             	lda MACHINE
+    79  60ac d00a               	bne .known
+    80                          	;; MACHINE=0 - unknown machine
+    81  60ae a000a20120618020...	+prerr $0001 ;; E0001: The machine identification routines from http://www.1000bit.it/support/manuali/apple/technotes/misc/tn.misc.02.html failed to identify the model.
+    82  8064 d5cec1c2ccc5a0d4...	!text "UNABLE TO IDENTIFY"
+    83  8076 8d00               	+prerred
+    84  60b5 4c2761             	jmp end
+    85                          .known
+    86  60b8 c906               	cmp #IIeCard
+    87  60ba 9014               	bcc .leiic
+    88  60bc d005               	bne .gs
+    89                          ;IIeCard
+    90  60be 207880208870       	+print
+    91  807b c9c9c5a0c5cdd5cc...	!text "IIE EMULATION CARD"
+    92  808d 00                 	+printed
+    93  60c1 f003               	beq .notsupported
+    94                          .gs	;PLUGH
+    95  60c3 208e80208870       	+print
+    96  8091 c1d0d0ccc5a0c9c9...	!text "APPLE IIGS"
+    97  809b 00                 	+printed
+    98                          .notsupported
+    99  60c6 a000a202209c8020...	+prerr $0002 ;; E0002: The current version of the audit program doesn't support the identified machine.
+   100  809f a0cecfd4a0d3d5d0...	!text " NOT SUPPORTED"
+   101  80ad 8d00               	+prerred
+   102  60cd 4c2761             	jmp end
+   103                          .leiic
+   104  60d0 c904               	cmp #IIe
+   105  60d2 9031               	bcc .leiii
+   106  60d4 f005               	beq .iie
+   107                          ;IIc
+   108  60d6 20af80208870       	+print
+   109  80b2 c9c9c3             	!text "IIC"
+   110  80b5 00                 	+printed
+   111  60d9 f0eb               	beq .notsupported
+   112                          .iie
+   113  60db 20b680208870       	+print
+   114  80b9 c1d0d0ccc5a0c9c9...	!text "APPLE IIE"
+   115  80c2 00                 	+printed
+   116  60de ade572             	lda ROMLEVEL
+   117  60e1 c901               	cmp #1
+   118  60e3 f003               	beq +
+   119  60e5 20c380208870       	+print
+   120  80c6 a0a8c5cec8c1cec3...	!text " (ENHANCED)"
+   121  80d1 00                 	+printed
+   122  60e8 a98d               +	lda #$8D
+   123  60ea 209b6c             	jsr COUT
+   124                          
+   125                          ;;; Error out if RAMRD or RAMWRT are set.
+   126  60ed ad13c0             	lda $C013
+   127  60f0 0d14c0             	ora $C014
+   128  60f3 3006               	bmi +
+   129  60f5 206473             	jsr COPYTOAUX
+   130  60f8 4c1861             	jmp .done
+   131                          
+   132  60fb a000a20320d28020...+	+prerr $0003 ;; E0003: Soft-switched for either RAMRD or RAMWRT read as set, which means we're either reading from, or writing to, auxiliary RAM. Please press RESET and run the test again to start in a known-good state.
+   133  80d5 d2c1cdd2c4a0cfd2...	!text "RAMRD OR RAMWRT SET:RESET AND RERUN"
+   134  80f8 8d00               	+prerred
+   135  6102 4c2761             	jmp end
+   136                          .leiii
+   137  6105 c902               	cmp #IIplus
+   138  6107 9007               	bcc .iiplain
+   139  6109 f00a               	beq .iiplus
+   140                          ;iiiem
+   141  610b 20fa80208870       	+print
+   142  80fd c1d0d0ccc5a0c9c9...	!text "APPLE III IN EMULATION MODE"
+   143  8118 00                 	+printed
+   144  610e f0b6               	beq .notsupported
+   145                          .iiplain
+   146  6110 201981208870       	+print
+   147  811c d0ccc1c9cea0c1d0...	!text "PLAIN APPLE II",$8D
+   148  812b 00                 	+printed
+   149  6113 f003               	beq .done
+   150                          .iiplus
+   151  6115 202c81208870       	+print
+   152  812f c1d0d0ccc5a0c9c9...	!text "APPLE II PLUS",$8D
+   153  813d 00                 	+printed
+   154                          .done
+   155                          	} ;detect
+
+; ******** Source: audit.asm
+   160                          
+   161                          	!ifndef SKIP {
+   162                          	;; Language card tests.
+   163  6118 203061             	jsr LANGCARDTESTS
+   164                          
+   165                          	;; Auxiliary memory card tests.
+   166  611b 20b563             	jsr AUXMEMTESTS
+   167                          
+   168                          	;; Tests of softswitch-reading
+   169  611e 201969             	jsr SOFTSWITCHTESTS
+   170                          
+   171                          	;; ROM SHA-1 checks.
+   172                          	;; jsr SHASUMTESTS - do this later, because it's SLOW!
+   173                          
+   174                          	;; Keyboard tests: for now, just check we can press 'Y', 'N', SPACE, or ESC
+   175  6121 20e66c             	jsr KEYBOARDTESTS
+   176                          
+   177                          	} ; ifndef SKIP
+   178                          
+   179                          	;; Video tests.
+   180  6124 201a6d             	jsr VIDEOTESTS
+   181                          
+   182                          end:
+   183  6127 203e81208870       	+print
+   184  8141 c5cec4             	!text "END"
+   185  8144 00                 	+printed
+   186  612a 20d26a             	jsr RESETALL
+   187  612d 4c2d61             	jmp *
+   188                          
+
+; ******** Source: langcard.asm
+     1                          ;;; Apple II Language Card audit routines
+     2                          ;;; Copyright © 2016 Zellyn Hunter <zellyn@gmail.com>
+     3                          
+     4                          !zone langcard {
+     5                          	.checkdata = tmp1
+     6                          
+     7                          LANGCARDTESTS
+     8  6130 a900               	lda #0
+     9  6132 8510               	sta LCRESULT
+    10  6134 ade672             	lda MEMORY
+    11  6137 c931               	cmp #49
+    12  6139 b005               	bcs LANGCARDTESTS_NO_CHECK
+    13  613b 204581208870       	+print
+    14  8148 b4b8cbbad3cbc9d0...	!text "48K:SKIPPING LANGUAGE CARD TEST",$8D
+    15  8168 00                 	+printed
+    16  613e 38                 	sec
+    17  613f 60                 	rts
+    18                          LANGCARDTESTS_NO_CHECK:
+    19  6140 206981208870       	+print
+    20  816c d4c5d3d4c9cec7a0...	!text "TESTING LANGUAGE CARD",$8D
+    21  8182 00                 	+printed
+    22                          	;; Setup - store differing values in bank first and second banked areas.
+    23  6143 ad8bc0             	lda $C08B		; Read and write bank 1
+    24  6146 ad8bc0             	lda $C08B
+    25  6149 a911               	lda #$11
+    26  614b 8d7bd1             	sta $D17B		; $D17B is $53 in Apple II/plus/e/enhanced
+    27  614e cd7bd1             	cmp $D17B
+    28  6151 f009               	beq +
+    29  6153 a000a20420838120...	+prerr $0004 ;; E0004: We tried to put the language card into read bank 1, write bank 1, but failed to write.
+    30  8186 c3c1cececfd4a0d7...	!text "CANNOT WRITE TO LC BANK 1 RAM"
+    31  81a3 8d00               	+prerred
+    32  615a 38                 	sec
+    33  615b 60                 	rts
+    34  615c a933               +	lda #$33
+    35  615e 8d1ffe             	sta $FE1F		; FE1F is $60 in Apple II/plus/e/enhanced
+    36  6161 cd1ffe             	cmp $FE1F
+    37  6164 f009               	beq +
+    38  6166 a000a20520a58120...	+prerr $0005 ;; E0005: We tried to put the language card into read RAM, write RAM, but failed to write.
+    39  81a8 c3c1cececfd4a0d7...	!text "CANNOT WRITE TO LC RAM"
+    40  81be 8d00               	+prerred
+    41  616d 38                 	sec
+    42  616e 60                 	rts
+    43  616f ad83c0             +	lda $C083		; Read and write bank 2
+    44  6172 ad83c0             	lda $C083
+    45  6175 a922               	lda #$22
+    46  6177 8d7bd1             	sta $D17B
+    47  617a cd7bd1             	cmp $D17B
+    48  617d f009               	beq +
+    49  617f a000a20620c08120...	+prerr $0006 ;; E0006: We tried to put the language card into read bank 2, write bank 2, but failed to write.
+    50  81c3 c3c1cececfd4a0d7...	!text "CANNOT WRITE TO LC BANK 2 RAM"
+    51  81e0 8d00               	+prerred
+    52  6186 38                 	sec
+    53  6187 60                 	rts
+    54  6188 ad8bc0             +	lda $C08B		; Read and write bank 1 with single access (only one needed if banked in already)
+    55  618b a911               	lda #$11
+    56  618d cd7bd1             	cmp $D17B
+    57  6190 f009               	beq +
+    58  6192 a000a20d20e28120...	+prerr $000D ;; E000D: We tried to put the language card into read bank 1, but failed to read.
+    59  81e5 c3c1cececfd4a0d2...	!text "CANNOT READ FROM LC BANK 1 RAM"
+    60  8203 8d00               	+prerred
+    61  6199 38                 	sec
+    62  619a 60                 	rts
+    63  619b ad81c0             +	lda $C081		; Read ROM with single access (only one needed to bank out)
+    64  619e a953               	lda #$53
+    65  61a0 cd7bd1             	cmp $D17B
+    66  61a3 f009               	beq .datadriventests
+    67  61a5 a000a20e20058220...	+prerr $000E ;; E000E: We tried to put the language card into read ROM, but failed to read.
+    68  8208 c3c1cececfd4a0d2...	!text "CANNOT READ FROM ROM"
+    69  821c 8d00               	+prerred
+    70  61ac 38                 	sec
+    71  61ad 60                 	rts
+    72                          
+    73                          ;;; Main data-driven test. PCL,PCH holds the address of the next
+    74                          ;;; data-driven test routine. We expect the various softswitches
+    75                          ;;; to be reset each time we loop at .ddloop.
+    76                          .datadriventests
+    77  61ae a9d7               	lda #<.tests
+    78  61b0 853a               	sta PCL
+    79  61b2 a962               	lda #>.tests
+    80  61b4 853b               	sta PCH
+    81                          ;;; Main data-drive-test loop.
+    82                          .ddloop
+    83  61b6 a000               	ldy #0
+    84                          
+    85                          	;; Initialize to known state:
+    86                          	;; - $11 in $D17B bank 1 (ROM: $53)
+    87                          	;; - $22 in $D17B bank 2 (ROM: $53)
+    88                          	;; - $33 in $FE1F        (ROM: $60)
+    89  61b8 ad8bc0             	lda $C08B		; Read and write bank 1
+    90  61bb ad8bc0             	lda $C08B
+    91  61be a911               	lda #$11
+    92  61c0 8d7bd1             	sta $D17B
+    93  61c3 a933               	lda #$33
+    94  61c5 8d1ffe             	sta $FE1F
+    95  61c8 ad83c0             	lda $C083		; Read and write bank 2
+    96  61cb ad83c0             	lda $C083
+    97  61ce a922               	lda #$22
+    98  61d0 8d7bd1             	sta $D17B
+    99  61d3 ad80c0             	lda $C080
+   100                          
+   101  61d6 6c3a00             	jmp (PCL)		; Jump to test routine
+   102                          
+   103                          
+   104                          	;; Test routine will JSR back to here, so the check data address is on the stack.
+   105                          
+   106                          .test	;; ... test the quintiple of test values
+   107  61d9 ee7bd1             	inc $D17B
+   108  61dc ee1ffe             	inc $FE1F
+   109                          
+   110                          	;; pull address off of stack: it points just below check data for this test.
+   111  61df 68                 	pla
+   112  61e0 85fa               	sta .checkdata
+   113  61e2 68                 	pla
+   114  61e3 85fb               	sta .checkdata+1
+   115                          
+   116                          	;; .checkdata now points to d17b-current,fe1f-current,bank1,bank2,fe1f-ram test quintiple
+   117                          
+   118                          	;; Test current $D17B
+   119  61e5 207770             	jsr NEXTCHECK
+   120  61e8 cd7bd1             	cmp $D17B
+   121  61eb f01f               	beq +
+   122  61ed ad7bd1             	lda $D17B
+   123  61f0 48                 	pha
+   124  61f1 20cd62             	jsr .printseq
+   125  61f4 201e82208870       	+print
+   126  8221 a4c4b1b7c2a0d4cf...	!text "$D17B TO CONTAIN $"
+   127  8233 00                 	+printed
+   128  61f7 207d70             	jsr CURCHECK
+   129  61fa 20886c             	jsr PRBYTE
+   130  61fd 203482208870       	+print
+   131  8237 aca0c7cfd4a0a4     	!text ", GOT $"
+   132  823e 00                 	+printed
+   133  6200 68                 	pla
+   134  6201 20886c             	jsr PRBYTE
+   135  6204 a98d               	lda #$8D
+   136  6206 209b6c             	jsr COUT
+   137  6209 4cc462             	jmp .datatesturl
+   138                          
+   139                          +	;; Test current $FE1F
+   140  620c 207770             	jsr NEXTCHECK
+   141  620f cd1ffe             	cmp $FE1F
+   142  6212 f01f               	beq +
+   143  6214 ad1ffe             	lda $FE1F
+   144  6217 48                 	pha
+   145  6218 20cd62             	jsr .printseq
+   146  621b 203f82208870       	+print
+   147  8242 a4c6c5b1c6bda4     	!text "$FE1F=$"
+   148  8249 00                 	+printed
+   149  621e 207d70             	jsr CURCHECK
+   150  6221 20886c             	jsr PRBYTE
+   151  6224 204a82208870       	+print
+   152  824d aca0c7cfd4a0a4     	!text ", GOT $"
+   153  8254 00                 	+printed
+   154  6227 68                 	pla
+   155  6228 20886c             	jsr PRBYTE
+   156  622b a98d               	lda #$8D
+   157  622d 209b6c             	jsr COUT
+   158  6230 4cc462             	jmp .datatesturl
+   159                          
+   160                          +	;; Test bank 1 $D17B
+   161  6233 ad88c0             	lda $C088
+   162  6236 207770             	jsr NEXTCHECK
+   163  6239 cd7bd1             	cmp $D17B
+   164  623c f01f               	beq +
+   165  623e ad7bd1             	lda $D17B
+   166  6241 48                 	pha
+   167  6242 20cd62             	jsr .printseq
+   168  6245 205582208870       	+print
+   169  8258 a4c4b1b7c2a0c9ce...	!text "$D17B IN RAM BANK 1 TO CONTAIN $"
+   170  8278 00                 	+printed
+   171  6248 207d70             	jsr CURCHECK
+   172  624b 20886c             	jsr PRBYTE
+   173  624e 207982208870       	+print
+   174  827c aca0c7cfd4a0a4     	!text ", GOT $"
+   175  8283 00                 	+printed
+   176  6251 68                 	pla
+   177  6252 20886c             	jsr PRBYTE
+   178  6255 a98d               	lda #$8D
+   179  6257 209b6c             	jsr COUT
+   180  625a 4cc462             	jmp .datatesturl
+   181                          
+   182                          +	;; Test bank 2 $D17B
+   183  625d ad80c0             	lda $C080
+   184  6260 207770             	jsr NEXTCHECK
+   185  6263 cd7bd1             	cmp $D17B
+   186  6266 f01f               	beq +
+   187  6268 ad7bd1             	lda $D17B
+   188  626b 48                 	pha
+   189  626c 20cd62             	jsr .printseq
+   190  626f 208482208870       	+print
+   191  8287 a4c4b1b7c2a0c9ce...	!text "$D17B IN RAM BANK 2 TO CONTAIN $"
+   192  82a7 00                 	+printed
+   193  6272 207d70             	jsr CURCHECK
+   194  6275 20886c             	jsr PRBYTE
+   195  6278 20a882208870       	+print
+   196  82ab aca0c7cfd4a0a4     	!text ", GOT $"
+   197  82b2 00                 	+printed
+   198  627b 68                 	pla
+   199  627c 20886c             	jsr PRBYTE
+   200  627f a98d               	lda #$8D
+   201  6281 209b6c             	jsr COUT
+   202  6284 4cc462             	jmp .datatesturl
+   203                          
+   204                          +	;; Test RAM $FE1F
+   205  6287 ad80c0             	lda $C080
+   206  628a 207770             	jsr NEXTCHECK
+   207  628d cd1ffe             	cmp $FE1F
+   208  6290 f01f               	beq +
+   209  6292 ad1ffe             	lda $FE1F
+   210  6295 48                 	pha
+   211  6296 20cd62             	jsr .printseq
+   212  6299 20b382208870       	+print
+   213  82b6 d2c1cda0a4c6c5b1...	!text "RAM $FE1F=$"
+   214  82c1 00                 	+printed
+   215  629c 207d70             	jsr CURCHECK
+   216  629f 20886c             	jsr PRBYTE
+   217  62a2 20c282208870       	+print
+   218  82c5 aca0c7cfd4a0a4     	!text ", GOT $"
+   219  82cc 00                 	+printed
+   220  62a5 68                 	pla
+   221  62a6 20886c             	jsr PRBYTE
+   222  62a9 a98d               	lda #$8D
+   223  62ab 209b6c             	jsr COUT
+   224  62ae 4cc462             	jmp .datatesturl
+   225                          
+   226                          +	;; Jump PCL,PCH up to after the test data, and loop.
+   227  62b1 207770             	jsr NEXTCHECK
+   228  62b4 d003               	bne +
+   229  62b6 4cac63             	jmp .success
+   230  62b9 a6fa               +	ldx .checkdata
+   231  62bb a4fb               	ldy .checkdata+1
+   232  62bd 863a               	stx PCL
+   233  62bf 843b               	sty PCH
+   234  62c1 4cb661             	jmp .ddloop
+   235                          
+   236                          .datatesturl
+   237  62c4 a000a20720cd8220...	+prerr $0007 ;; E0007: This is a data-driven test of Language Card operation. We initialize $D17B in RAM bank 1 to $11, $D17B in RAM bank 2 to $22, and $FE1F in RAM to $33. Then, we perform a testdata-driven sequence of LDA and STA to the $C08X range. Finally we (try to) increment $D17B and $FE1F. Then we test (a) the current live value in $D17B, (b) the current live value in $FE1F, (c) the RAM bank 1 value of $D17B, (d) the RAM bank 2 value of $D17B, and (e) the RAM value of $FE1F, to see whether they match expected values. $D17B is usually $53 in ROM, and $FE1F is usally $60. For more information on the operation of the language card soft-switches, see Understanding the Apple IIe, by James Fielding Sather, Pg 5-24.
+   238  82d0 c4c1d4c1adc4d2c9...	!text "DATA-DRIVEN TEST FAILED"
+   239  82e7 8d00               	+prerred
+   240  62cb 38                 	sec
+   241  62cc 60                 	rts
+   242                          
+   243                          .printseq
+   244  62cd 20e982208870       	+print
+   245  82ec c1c6d4c5d2a0d3c5...	!text "AFTER SEQUENCE OF:",$8D,"- LDA   $C080",$8D
+   246  830d 00                 	+printed
+   247  62d0 204970             	jsr PRINTTEST
+   248  62d3 200e83208870       	+print
+   249  8311 ada0c9cec3a0a0a0...	!text "- INC   $D17B",$8D,"- INC   $FE1F",$8D,"EXPECTED "
+   250  8336 00                 	+printed
+   251  62d6 60                 	rts
+   252                          
+   253                          .tests
+   254                          	;; Format:
+   255                          	;; Sequence of test instructions, finishing with `jsr .test`.
+   256                          	;; - quint: expected current $d17b and fe1f, then d17b in bank1, d17b in bank 2, and fe1f
+   257                          	;; (All sequences start with lda $C080, just to reset things to a known state.)
+   258                          	;; 0-byte to terminate tests.
+   259                          
+   260  62d7 ad88c0             	lda $C088				; Read $C088 (RAM read, write protected)
+   261  62da 20d961             	jsr .test				;
+   262  62dd 1133112233         	!byte $11, $33, $11, $22, $33		;
+   263                          						;
+   264  62e2 ad80c0             	lda $C080				; Read $C080 (read bank 2, write disabled)
+   265  62e5 20d961             	jsr .test				;
+   266  62e8 2233112233         	!byte $22, $33, $11, $22, $33		;
+   267                          						;
+   268  62ed ad81c0             	lda $C081				; Read $C081 (ROM read, write disabled)
+   269  62f0 20d961             	jsr .test				;
+   270  62f3 5360112233         	!byte $53, $60, $11, $22, $33		;
+   271                          						;
+   272  62f8 ad81c0             	lda $C081				; Read $C081, $C089 (ROM read, bank 1 write)
+   273  62fb ad89c0             	lda $C089				;
+   274  62fe 20d961             	jsr .test				;
+   275  6301 5360542261         	!byte $53, $60, $54, $22, $61		;
+   276                          						;
+   277  6306 ad81c0             	lda $C081				; Read $C081, $C081 (read ROM, write RAM bank 2)
+   278  6309 ad81c0             	lda $C081				;
+   279  630c 20d961             	jsr .test				;
+   280  630f 5360115461         	!byte $53, $60, $11, $54, $61		;
+   281                          						;
+   282  6314 ad81c0             	lda $C081				; Read $C081, $C081, write $C081 (read ROM, write RAM bank bank 2)
+   283  6317 ad81c0             	lda $C081				; See https://github.com/zellyn/a2audit/issues/3
+   284  631a 8d81c0             	sta $C081				;
+   285  631d 20d961             	jsr .test				;
+   286  6320 5360115461         	!byte $53, $60, $11, $54, $61		;
+   287                          						;
+   288  6325 ad81c0             	lda $C081				; Read $C081, $C081; write $C081, $C081
+   289  6328 ad81c0             	lda $C081				; See https://github.com/zellyn/a2audit/issues/4
+   290  632b 8d81c0             	sta $C081				;
+   291  632e 8d81c0             	sta $C081				;
+   292  6331 20d961             	jsr .test				;
+   293  6334 5360115461         	!byte $53, $60, $11, $54, $61		;
+   294                          						;
+   295  6339 ad8bc0             	lda $C08B				; Read $C08B (read RAM bank 1, no write)
+   296  633c 20d961             	jsr .test				;
+   297  633f 1133112233         	!byte $11, $33, $11, $22, $33		;
+   298                          						;
+   299  6344 ad83c0             	lda $C083				; Read $C083 (read RAM bank 2, no write)
+   300  6347 20d961             	jsr .test				;
+   301  634a 2233112233         	!byte $22, $33, $11, $22, $33		;
+   302                          						;
+   303  634f ad8bc0             	lda $C08B				; Read $C08B, $C08B (read/write RAM bank 1)
+   304  6352 ad8bc0             	lda $C08B				;
+   305  6355 20d961             	jsr .test				;
+   306  6358 1234122234         	!byte $12, $34, $12, $22, $34		;
+   307                          						;
+   308  635d ad8fc0             	lda $C08F				; Read $C08F, $C087 (read/write RAM bank 2)
+   309  6360 ad87c0             	lda $C087				;
+   310  6363 20d961             	jsr .test				;
+   311  6366 2334112334         	!byte $23, $34, $11, $23, $34		;
+   312                          						;
+   313  636b ad87c0             	lda $C087				; Read $C087, read $C08D (read ROM, write bank 1)
+   314  636e ad8dc0             	lda $C08D				;
+   315  6371 20d961             	jsr .test				;
+   316  6374 5360542261         	!byte $53, $60, $54, $22, $61		;
+   317                          						;
+   318  6379 ad8bc0             	lda $C08B				; Read $C08B, write $C08B, read $C08B (read RAM bank 1, no write)
+   319  637c 8d8bc0             	sta $C08B				; (this one is tricky: reset WRTCOUNT by writing halfway)
+   320  637f ad8bc0             	lda $C08B				;
+   321  6382 20d961             	jsr .test				;
+   322  6385 1133112233         	!byte $11, $33, $11, $22, $33		;
+   323                          						;
+   324  638a 8d8bc0             	sta $C08B				; Write $C08B, write $C08B, read $C08B (read RAM bank 1, no write)
+   325  638d 8d8bc0             	sta $C08B				;
+   326  6390 ad8bc0             	lda $C08B				;
+   327  6393 20d961             	jsr .test				;
+   328  6396 1133112233         	!byte $11, $33, $11, $22, $33		;
+   329                          						;
+   330  639b 18                 	clc					; Read $C083, $C083 (read/write RAM bank 2)
+   331  639c a200               	ldx #0					; Uses "6502 false read"
+   332  639e fe83c0             	inc $C083,x				;
+   333  63a1 20d961             	jsr .test				;
+   334  63a4 2334112334         	!byte $23, $34, $11, $23, $34		;
+   335                          						;
+   336  63a9 00                 	!byte 0					; End of tests
+   337                          
+   338  63aa ea                 	nop			; Provide clean break after data when viewing disassembly
+   339  63ab ea                 	nop
+   340                          .success
+   341                          
+   342                          	;; Success
+   343  63ac 203783208870       	+print
+   344  833a ccc1cec7d5c1c7c5...	!text "LANGUAGE CARD TESTS SUCCEEDED",$8D
+   345  8358 00                 	+printed
+   346  63af a901               	lda #1
+   347  63b1 8510               	sta LCRESULT
+   348  63b3 18                 	clc
+   349  63b4 60                 	rts
+   350                          } ;langcard
+
+; ******** Source: audit.asm
+
+; ******** Source: auxmem.asm
+     1                          ;;; Apple IIe Auxiliary memory audit routines
+     2                          ;;; Copyright © 2017 Zellyn Hunter <zellyn@gmail.com>
+     3                          
+     4                          !zone auxmem {
+     5                          
+     6                          	.MEM_1 = %00000000
+     7                          	.MEM_2 = %00000001
+     8                          	.MEM_3 = %00000010
+     9                          	.MEM_4 = %00000011
+    10                          	.MEM_2_1_1_1 = (.MEM_2 << 0) + (.MEM_1 << 2) + (.MEM_1 << 4) + (.MEM_1 << 6)
+    11                          	.MEM_3_2_2_2 = (.MEM_3 << 0) + (.MEM_2 << 2) + (.MEM_2 << 4) + (.MEM_2 << 6)
+    12                          
+    13                          	.C_8f = %0001
+    14                          	.C_12 = %0010
+    15                          	.C_47 = %0100
+    16                          	.C_3  = %1000
+    17                          	.C_0  = %0000
+    18                          	.C_skip = $80
+    19                          	.C_1348 = .C_12 | .C_3 | .C_47 | .C_8f
+    20                          	.C_38 = .C_3 | .C_8f
+    21                          
+    22                          	.checkdata = tmp1
+    23                          	.ismain = tmp3
+    24                          	.region = tmp4
+    25                          	.actual = tmp1
+    26                          	.desired = tmp2
+    27                          
+    28                          
+    29                          AUXMEMTESTS
+    30  63b5 a900               	lda #0
+    31  63b7 8512               	sta AUXRESULT
+    32  63b9 ade672             	lda MEMORY
+    33  63bc c941               	cmp #65
+    34  63be b005               	bcs +
+    35  63c0 205983208870       	+print
+    36  835c b6b4cba0cfd2a0cc...	!text "64K OR LESS:SKIPPING AUXMEM TEST",$8D
+    37  837d 00                 	+printed
+    38  63c3 38                 	sec
+    39  63c4 60                 	rts
+    40                          
+    41  63c5 207e83208870       +	+print
+    42  8381 d4c5d3d4c9cec7a0...	!text "TESTING AUX MEM",$8D
+    43  8391 00                 	+printed
+    44                          
+    45  63c8 a510               	lda LCRESULT
+    46  63ca d006               	bne .auxlc
+    47  63cc 209283208870       	+print
+    48  8395 ccc3a0c6c1c9ccc5...	!text "LC FAILED BEFORE:SKIPPING AUXMEM LC",$8D
+    49  83b9 00                 	+printed
+    50  63cf 4c5864             	jmp .datadriventests
+    51                          
+    52                          .auxlc	;; Run langcard tests in auxmem
+    53                          
+    54  63d2 a510               	lda LCRESULT
+    55  63d4 8511               	sta LCRESULT1
+    56  63d6 a900               	lda #0
+    57  63d8 8510               	sta LCRESULT
+    58                          
+    59                          	;; Store distinct values in RAM areas, to see if they stay safe.
+    60  63da ad8bc0             	lda $C08B		; Read and write bank 1
+    61  63dd ad8bc0             	lda $C08B
+    62  63e0 a944               	lda #$44
+    63  63e2 8d7bd1             	sta $D17B		; $D17B is $53 in Apple II/plus/e/enhanced
+    64  63e5 8d1ffe             	sta $FE1F		; FE1F is $60 in Apple II/plus/e/enhanced
+    65  63e8 ad83c0             	lda $C083		; Read and write bank 2
+    66  63eb ad83c0             	lda $C083
+    67  63ee a944               	lda #$44
+    68  63f0 8d7bd1             	sta $D17B
+    69                          
+    70  63f3 203c66             	jsr zptoaux
+    71                          
+    72  63f6 8d09c0             	sta SET_ALTZP
+    73  63f9 204061             	jsr LANGCARDTESTS_NO_CHECK
+    74  63fc 8d08c0             	sta RESET_ALTZP
+    75                          
+    76  63ff 204f66             	jsr zpfromaux
+    77                          
+    78  6402 a510               	lda LCRESULT
+    79  6404 d009               	bne +
+    80                          
+    81  6406 a000a20820ba8320...	+prerr $0008 ;; E0008: We tried to run the langcard tests again with auxmem (ALTZP active), and they failed, so we're quitting the auxmem test.
+    82  83bd d1d5c9d4d4c9cec7...	!text "QUITTING AUXMEM TEST DUE TO LC FAIL",$8D
+    83  83e1 8d00               	+prerred
+    84  640d 38                 	sec
+    85  640e 60                 	rts
+    86                          
+    87                          	;; Check that the stuff we stashed in main RAM was unaffected.
+    88                          +
+    89  640f ad88c0             	lda $C088		; Read bank 1
+    90  6412 ad7bd1             	lda $D17B
+    91  6415 c944               	cmp #$44
+    92  6417 f006               	beq +
+    93  6419 48                 	pha
+    94  641a 20e383208870       	+print
+    95  83e6 d7c1ced4a0c2c1ce...	!text "WANT BANK1 $D17B"
+    96  83f6 00                 	+printed
+    97  641d f01b               	beq .lcerr
+    98                          
+    99  641f ad80c0             +	lda $C080		; Read bank 2
+   100  6422 ad7bd1             	lda $D17B
+   101  6425 c944               	cmp #$44
+   102  6427 f006               	beq +
+   103  6429 48                 	pha
+   104  642a 20f783208870       	+print
+   105  83fa d7c1ced4a0c2c1ce...	!text "WANT BANK2 $D17B"
+   106  840a 00                 	+printed
+   107  642d f00b               	beq .lcerr
+   108                          
+   109                          +
+   110  642f ad1ffe             	lda $FE1F
+   111  6432 c944               	cmp #$44
+   112  6434 f022               	beq .datadriventests
+   113  6436 48                 	pha
+   114  6437 200b84208870       	+print
+   115  840e d7c1ced4a0d2c1cd...	!text "WANT RAM $FE1F"
+   116  841c 00                 	+printed
+   117                          
+   118                          .lcerr
+   119  643a 201d84208870       	+print
+   120  8420 bda4b4b4bbc7cfd4...	!text "=$44;GOT $"
+   121  842a 00                 	+printed
+   122  643d 68                 	pla
+   123  643e 20886c             	jsr PRBYTE
+   124  6441 a000a209202b8420...	+prerr $0009 ;; E0009: We wrote $44 to main RAM in the three test locations used by the LC test. They should have been unaffected by the LC test while it was using auxmem, but at least one of them was modified.
+   125                          	!text ""
+   126  842e 8d00               	+prerred
+   127  6448 38                 	sec
+   128  6449 60                 	rts
+   129                          
+   130                          .success
+   131  644a a9a0               	lda #' '
+   132  644c 8d2704             	sta $427
+   133  644f 203084208870       	+print
+   134  8433 c1d5d8cdc5cda0d4...	!text "AUXMEM TESTS SUCCEEDED",$8D
+   135  844a 00                 	+printed
+   136  6452 a901               	lda #1
+   137  6454 8512               	sta AUXRESULT
+   138  6456 18                 	clc
+   139  6457 60                 	rts
+   140                          
+   141                          ;;; Main data-driven test. PCL,PCH holds the address of the next
+   142                          ;;; data-driven test routine. We expect the various softswitches
+   143                          ;;; to be reset each time we loop at .ddloop.
+   144                          .datadriventests
+   145  6458 a95f               	lda #<.auxtests
+   146  645a 853a               	sta PCL
+   147  645c a966               	lda #>.auxtests
+   148  645e 853b               	sta PCH
+   149                          ;;; Main data-drive-test loop.
+   150                          .ddloop
+   151  6460 a000               	ldy #0
+   152  6462 b13a               	lda (PCL),Y
+   153  6464 f0e4               	beq .success
+   154                          
+   155  6466 a903               	lda #3
+   156  6468 8d09c0             	sta SET_ALTZP
+   157  646b 8d05c0             	sta SET_RAMWRT
+   158  646e 8d03c0             	sta SET_RAMRD
+   159                          
+   160                          .initloop			; Loop twice: initialize aux to $3 and main to $1.
+   161  6471 a020               	ldy #.memorylen
+   162  6473 bec568             -	ldx .memorylocs,y
+   163  6476 8e8064             	stx + +1
+   164  6479 bec668             	ldx .memorylocs+1,y
+   165  647c 8e8164             	stx + +2
+   166  647f 8dffff             +	sta $ffff ;; this address gets replaced
+   167  6482 88                 	dey
+   168  6483 88                 	dey
+   169  6484 10ed               	bpl -
+   170                          
+   171  6486 8d08c0             	sta RESET_ALTZP
+   172  6489 8d04c0             	sta RESET_RAMWRT
+   173  648c 8d02c0             	sta RESET_RAMRD
+   174                          
+   175  648f 38                 	sec
+   176  6490 e902               	sbc #2
+   177  6492 b0dd               	bcs .initloop
+   178                          
+   179  6494 6c3a00             	jmp (PCL)		; Jump to test routine.
+   180                          
+   181                          	;; Test routine will JSR back to here, so the check data address is on the stack.
+   182                          	;; .checkdata (tmp1/tmp2) is the pointer to the current checkdata byte
+   183                          	;; .ismain (tmp3) is the main/aux loop counter.
+   184                          	;; .region (tmp4) is the zp/main/text/hires loop counter
+   185                          .check
+   186                          	;; Increment all the test memory locations, so we can see what we were reading and writing.
+   187  6497 e6ff               	inc $ff
+   188  6499 ee0001             	inc $100
+   189  649c ee0002             	inc $200
+   190  649f eeff03             	inc $3ff
+   191  64a2 ee2704             	inc $427
+   192  64a5 eeff07             	inc $7ff
+   193  64a8 ee0008             	inc $800
+   194  64ab eeff1f             	inc $1fff
+   195  64ae ee0020             	inc $2000
+   196  64b1 eeff3f             	inc $3fff
+   197  64b4 ee0040             	inc $4000
+   198  64b7 eeff5f             	inc $5fff
+   199  64ba eeffbf             	inc $bfff
+   200                          
+   201                          	;; pull address off of stack: it points just below check data for this test.
+   202  64bd 68                 	pla
+   203  64be 85fa               	sta .checkdata
+   204  64c0 68                 	pla
+   205  64c1 85fb               	sta .checkdata+1
+   206                          
+   207                          	;; First checkdata byte is for Cxxx tests.
+   208  64c3 207770             	jsr NEXTCHECK
+   209  64c6 3003               	bmi +
+   210  64c8 208665             	jsr .checkCxxx
+   211                          
+   212  64cb a6fa               +	ldx .checkdata
+   213  64cd a4fb               	ldy .checkdata+1
+   214  64cf 20d26a             	jsr RESETALL
+   215  64d2 86fa               	stx .checkdata
+   216  64d4 84fb               	sty .checkdata+1
+   217                          
+   218                          	;; Do the next part twice.
+   219  64d6 a901               	lda #1
+   220  64d8 85fc               	sta .ismain
+   221  64da 207770             	jsr NEXTCHECK
+   222                          .checkloop			; Loop twice here: once for main, once for aux.
+   223  64dd a904               	lda #4
+   224  64df 85fd               	sta .region
+   225  64e1 a2fe               	ldx #$fe
+   226  64e3 a000               	ldy #0
+   227                          
+   228  64e5 e8                 .memlp	inx
+   229  64e6 e8                 	inx
+   230  64e7 bdc568             	lda .memorylocs,x
+   231  64ea 8506               	sta SRC
+   232  64ec bdc668             	lda .memorylocs+1,x
+   233  64ef 8507               	sta SRC+1
+   234  64f1 0506               	ora SRC
+   235  64f3 f008               	beq .memlpinc
+   236                          
+   237                          	;; Perform the actual memory check.
+   238  64f5 b106               	lda (SRC),y
+   239  64f7 d1fa               	cmp (.checkdata),y
+   240  64f9 d033               	bne .checkerr
+   241  64fb f0e8               	beq .memlp
+   242                          
+   243                          .memlpinc
+   244  64fd 207770             	jsr NEXTCHECK
+   245  6500 c6fd               	dec .region		; loop four times: zero, main, text, hires
+   246  6502 d0e1               	bne .memlp
+   247                          
+   248  6504 c6fc               	dec .ismain
+   249  6506 3018               	bmi .checkdone
+   250  6508 a6fa               	ldx .checkdata
+   251  650a a4fb               	ldy .checkdata+1
+   252  650c a5fc               	lda .ismain
+   253  650e 8d09c0             	sta SET_ALTZP
+   254  6511 8d03c0             	sta SET_RAMRD
+   255  6514 8d05c0             	sta SET_RAMWRT
+   256  6517 86fa               	stx .checkdata
+   257  6519 84fb               	sty .checkdata+1
+   258  651b 85fc               	sta .ismain
+   259  651d 4cdd64             	jmp .checkloop
+   260                          
+   261                          .checkdone
+   262                          	;; Jump PCL,PCH to next test, and loop.
+   263  6520 a6fa               	ldx .checkdata
+   264  6522 a4fb               	ldy .checkdata+1
+   265  6524 20d26a             	jsr RESETALL
+   266  6527 863a               	stx PCL
+   267  6529 843b               	sty PCH
+   268  652b 4c6064             	jmp .ddloop
+   269                          
+   270                          .checkerr
+   271                          	;; X = index of memory location
+   272                          	;; A = actual
+   273                          	;; Y = 0
+   274                          	;; desired = (.checkdata),y
+   275  652e 48                 	pha
+   276  652f a5fc               	lda .ismain
+   277  6531 18                 	clc
+   278  6532 6a                 	ror
+   279  6533 6a                 	ror
+   280  6534 11fa               	ora (.checkdata),y
+   281  6536 a8                 	tay
+   282  6537 68                 	pla
+   283                          
+   284                          	;; Now:
+   285                          	;; X = index of memory location
+   286                          	;; A = actual
+   287                          	;; Y = desired | (high bit set if main, unset=aux)
+   288                          
+   289  6538 20d26a             	jsr RESETALL
+   290                          
+   291  653b 85fa               	sta .actual
+   292  653d 84fb               	sty .desired
+   293  653f bdc568             	lda .memorylocs,x
+   294  6542 8506               	sta SRC
+   295  6544 bdc668             	lda .memorylocs+1,x
+   296  6547 8507               	sta SRC+1
+   297                          
+   298  6549 204b84208870       	+print
+   299  844e c7cfd4a0a4         	!text "GOT $"
+   300  8453 00                 	+printed
+   301  654c a5fa               	lda .actual
+   302  654e 20886c             	jsr PRBYTE
+   303  6551 205484208870       	+print
+   304  8457 a0c1d4a0a4         	!text " AT $"
+   305  845c 00                 	+printed
+   306  6554 a606               	ldx SRC
+   307  6556 a407               	ldy SRC+1
+   308  6558 205e6b             	jsr PRNTYX
+   309                          
+   310  655b a5fb               	lda .desired
+   311  655d 1009               	bpl +
+   312  655f 4980               	eor #$80
+   313  6561 85fb               	sta .desired
+   314  6563 205d84208870       	+print
+   315  8460 a0cfc6a0cdc1c9ce...	!text " OF MAIN MEM (WANT $"
+   316  8474 00                 	+printed
+   317  6566 f003               	beq ++
+   318  6568 207584208870       +	+print
+   319  8478 a0cfc6a0c1d5d8a0...	!text " OF AUX MEM (WANT $"
+   320  848b 00                 	+printed
+   321                          ++
+   322  656b a5fb               	lda .desired
+   323  656d 20886c             	jsr PRBYTE
+   324  6570 a9a9               	lda #')'
+   325  6572 209b6c             	jsr COUT
+   326  6575 a98d               	lda #$8D
+   327  6577 209b6c             	jsr COUT
+   328                          
+   329  657a 203666             	jsr .printtest
+   330  657d a000a20a208c8420...	+prerr $000A ;; E000A: This is a data-driven test of main and auxiliary memory softswitch operation. We initialize $FF, $100, $200, $3FF, $427, $7FF, $800, $1FFF, $2000, $3FFF, $4000, $5FFF, and $BFFF in main RAM to value 1, and in auxiliary RAM to value 3. Then, we perform a testdata-driven sequence of instructions. Finally we (try to) increment all test locations. Then we test the expected values of the test locations in main and auxiliary memory. For more information on the operation of the auxiliary memory soft-switches, see Understanding the Apple IIe, by James Fielding Sather, Pg 5-22 to 5-28.
+   331  848f c6cfcccccfd7c5c4...	!text "FOLLOWED BY INC OF TEST LOCATIONS. SEE"
+   332  84b5 8d00               	+prerred
+   333                          
+   334  6584 38                 	sec
+   335  6585 60                 	rts
+   336                          
+   337                          ;;; Check that the expected ROM areas are visible.
+   338                          .checkCxxx
+   339                          	.gotCxxx = tmp0
+   340                          	.wantCxxx = SCRATCH
+   341  6586 48                 	pha
+   342  6587 20c365             	jsr .genCxxxFingerprint
+   343  658a 68                 	pla
+   344  658b c5f9               	cmp .gotCxxx
+   345  658d f033               	beq .checkCxxxDone
+   346  658f a5f9               	lda .gotCxxx
+   347                          
+   348                          	;; Reset, but copy .checkdata over.
+   349  6591 a6fa               	ldx .checkdata
+   350  6593 a4fb               	ldy .checkdata+1
+   351  6595 20d26a             	jsr RESETALL
+   352  6598 86fa               	stx .checkdata
+   353  659a 84fb               	sty .checkdata+1
+   354  659c 85f9               	sta .gotCxxx
+   355  659e a000               	ldy #0
+   356  65a0 b1fa               	lda (.checkdata),y
+   357  65a2 8501               	sta .wantCxxx
+   358                          
+   359  65a4 203666             	jsr .printtest
+   360  65a7 20b784208870       	+print
+   361  84ba d7c1ced4ba8d       	!text "WANT:",$8D
+   362  84c0 00                 	+printed
+   363  65aa a501               	lda .wantCxxx
+   364  65ac 200666             	jsr .printCxxxBits
+   365  65af 20c184208870       	+print
+   366  84c4 c7cfd4ba8d         	!text "GOT:",$8D
+   367  84c9 00                 	+printed
+   368  65b2 a5f9               	lda .gotCxxx
+   369  65b4 200666             	jsr .printCxxxBits
+   370                          
+   371  65b7 a000a20b20ca8420...	+prerr $000B ;; E000B: This is a the Cxxx-ROM check part of the auxiliary memory data-driven test (see E000A for a description of the other part). After a full reset, we perform a testdata-driven sequence of instructions. Finally we check which parts of Cxxx ROM seem to be visible. We check C100-C2FF, C300-C3FF, C400-C7FF (which should be the same as C100-C2FF), and C800-CFFE. For more details, see Understanding the Apple IIe, by James Fielding Sather, Pg 5-28.
+   372  84cd c3d8d8d8a0d2cfcd...	!text "CXXX ROM TEST FAILED"
+   373  84e1 8d00               	+prerred
+   374                          
+   375                          	;; Don't continue with auxmem check: return from parent JSR.
+   376  65be 68                 	pla
+   377  65bf 68                 	pla
+   378  65c0 38                 	sec
+   379  65c1 60                 	rts
+   380                          
+   381                          .checkCxxxDone
+   382  65c2 60                 	rts
+   383                          
+   384                          .genCxxxFingerprint
+   385                          	.dataptr = SCRATCH2
+   386                          	.want = SCRATCH3
+   387                          	.loopctr = SCRATCH
+   388                          
+   389  65c3 a900               	lda #0
+   390  65c5 85f9               	sta .gotCxxx
+   391  65c7 a900               	lda #0
+   392  65c9 8502               	sta .dataptr
+   393  65cb a904               	lda #4
+   394  65cd 8501               	sta .loopctr
+   395                          
+   396  65cf 18                 --	clc
+   397  65d0 66f9               	ror .gotCxxx
+   398  65d2 a204               	ldx #4			; four check bytes per region
+   399  65d4 a908               	lda #$8			; start out with positive match bit
+   400  65d6 05f9               	ora .gotCxxx
+   401  65d8 85f9               	sta .gotCxxx
+   402  65da a402               -	ldy .dataptr
+   403  65dc b9e968             	lda .cxtestdata,y
+   404  65df c8                 	iny
+   405  65e0 8506               	sta SRC
+   406  65e2 b9e968             	lda .cxtestdata,y
+   407  65e5 c8                 	iny
+   408  65e6 8507               	sta SRC+1
+   409  65e8 b9e968             	lda .cxtestdata,y
+   410  65eb c8                 	iny
+   411  65ec 8503               	sta .want
+   412  65ee 8402               	sty .dataptr
+   413  65f0 a000               	ldy #0
+   414  65f2 b106               	lda (SRC),y
+   415  65f4 c503               	cmp .want
+   416  65f6 f006               	beq +
+   417  65f8 a9f7               	lda #($ff-$8)		; mismatch: clear current bit
+   418  65fa 25f9               	and .gotCxxx
+   419  65fc 85f9               	sta .gotCxxx
+   420  65fe ca                 +	dex
+   421  65ff d0d9               	bne -
+   422                          
+   423  6601 c601               	dec .loopctr
+   424  6603 d0ca               	bne --
+   425  6605 60                 	rts
+   426                          
+   427                          .printCxxxBits
+   428  6606 aa                 	tax
+   429  6607 20e384208870       	+print
+   430  84e6 ada0c3b1b0b0adc3...	!text "- C100-C2FF: "
+   431  84f3 00                 	+printed
+   432  660a 8a                 	txa
+   433  660b 2902               	and #.C_12
+   434  660d 202c66             	jsr .printCxxxBit
+   435  6610 20f484208870       	+print
+   436  84f7 ada0c3b3b0b0adc3...	!text "- C300-C3FF: "
+   437  8504 00                 	+printed
+   438  6613 8a                 	txa
+   439  6614 2908               	and #.C_3
+   440  6616 202c66             	jsr .printCxxxBit
+   441  6619 200585208870       	+print
+   442  8508 ada0c3b4b0b0adc3...	!text "- C400-C7FF: "
+   443  8515 00                 	+printed
+   444  661c 8a                 	txa
+   445  661d 2904               	and #.C_47
+   446  661f 202c66             	jsr .printCxxxBit
+   447  6622 201685208870       	+print
+   448  8519 ada0c3b8b0b0adc3...	!text "- C800-CFFE: "
+   449  8526 00                 	+printed
+   450  6625 8a                 	txa
+   451  6626 2901               	and #.C_8f
+   452  6628 202c66             	jsr .printCxxxBit
+   453  662b 60                 	rts
+   454                          
+   455                          .printCxxxBit
+   456  662c d004               	bne +
+   457  662e 202785208870       	+print
+   458  852a bf8d               	!text "?",$8D
+   459  852c 00                 	+printed
+   460  6631 60                 	rts
+   461  6632 202d85208870       +	+print
+   462  8530 d2cfcd8d           	!text "ROM",$8D
+   463  8534 00                 	+printed
+   464  6635 60                 	rts
+   465                          
+   466                          ;;; Print out the sequence of instructions at PCL,PCH, until we hit a JSR.
+   467                          .printtest
+   468  6636 203585208870       	+print
+   469  8538 c1c6d4c5d2a0d3c5...	!text "AFTER SEQUENCE",$8D
+   470  8547 00                 	+printed
+   471  6639 4c4970             	jmp PRINTTEST
+   472                          
+   473                          ;;; Copy zero page to aux mem. Assumes zp pointing at main mem, and leaves it that way.
+   474                          zptoaux
+   475  663c a200               	ldx #0
+   476  663e 8d08c0             -	sta RESET_ALTZP
+   477  6641 b500               	lda 0,x
+   478  6643 8d09c0             	sta SET_ALTZP
+   479  6646 9500               	sta 0,x
+   480  6648 e8                 	inx
+   481  6649 d0f3               	bne -
+   482  664b 8d08c0             	sta RESET_ALTZP
+   483  664e 60                 	rts
+   484                          
+   485                          ;;; Copy zero page from aux mem. Assumes zp pointing at main mem, and leaves it that way.
+   486                          zpfromaux
+   487  664f a200               	ldx #0
+   488  6651 8d09c0             -	sta SET_ALTZP
+   489  6654 b500               	lda 0,x
+   490  6656 8d08c0             	sta RESET_ALTZP
+   491  6659 9500               	sta 0,x
+   492  665b e8                 	inx
+   493  665c d0f3               	bne -
+   494  665e 60                 	rts
+   495                          
+   496                          .auxtests
+   497                          
+   498                          	;; Our four basic tests --------------------------------------
+   499                          
+   500                          	;; Test 1: everything reset.
+   501  665f a901               	lda #1
+   502  6661 209764             	jsr .check
+   503  6664 8002020202030303...	!byte .C_skip, 2, 2, 2, 2, 3, 3, 3, 3
+   504                          
+   505                          	;; Test 2: write to AUX but read from Main RAM, everything else normal.
+   506  666d a902               	lda #2
+   507  666f 8d05c0             	sta SET_RAMWRT
+   508  6672 209764             	jsr .check
+   509  6675 8002010101030202...	!byte .C_skip, 2, 1, 1, 1, 3, 2, 2, 2
+   510                          
+   511                          	;; Test 3: write to main but read AUX, everything else normal.
+   512  667e a903               	lda #3
+   513  6680 8d03c0             	sta SET_RAMRD
+   514  6683 209764             	jsr .check
+   515  6686 8002040404030303...	!byte .C_skip, 2, 4, 4, 4, 3, 3, 3, 3
+   516                          
+   517                          	;; Test 4: write to AUX, read from AUX, everything else normal.
+   518  668f a904               	lda #4
+   519  6691 8d03c0             	sta SET_RAMRD
+   520  6694 8d05c0             	sta SET_RAMWRT
+   521  6697 209764             	jsr .check
+   522  669a 8002010101030404...	!byte .C_skip, 2, 1, 1, 1, 3, 4, 4, 4
+   523                          
+   524                          	;; Our four basic tests, but with 80STORE ON -----------------
+   525                          	;; (400-7ff is pointing at main mem)
+   526                          
+   527                          	;; Test 5: everything reset.
+   528  66a3 a905               	lda #5
+   529  66a5 8d01c0             	sta SET_80STORE
+   530  66a8 209764             	jsr .check
+   531  66ab 8002020202030303...	!byte .C_skip, 2, 2, 2, 2, 3, 3, 3, 3
+   532                          
+   533                          	;; Test 6: write to aux
+   534  66b4 a906               	lda #6
+   535  66b6 8d05c0             	sta SET_RAMWRT
+   536  66b9 8d01c0             	sta SET_80STORE
+   537  66bc 209764             	jsr .check
+   538  66bf 8002010201030203...	!byte .C_skip, 2, 1, 2, 1, 3, 2, 3, 2
+   539                          
+   540                          	;; Test 7: read from aux
+   541  66c8 a907               	lda #7
+   542  66ca 8d03c0             	sta SET_RAMRD
+   543  66cd 8d01c0             	sta SET_80STORE
+   544  66d0 209764             	jsr .check
+   545  66d3 8002040204030303...	!byte .C_skip, 2, 4, 2, 4, 3, 3, 3, 3
+   546                          
+   547                          	;; Test 8: read and write aux
+   548  66dc a908               	lda #8
+   549  66de 8d03c0             	sta SET_RAMRD
+   550  66e1 8d05c0             	sta SET_RAMWRT
+   551  66e4 8d01c0             	sta SET_80STORE
+   552  66e7 209764             	jsr .check
+   553  66ea 8002010201030403...	!byte .C_skip, 2, 1, 2, 1, 3, 4, 3, 4
+   554                          
+   555                          	;; Our four basic tests, but with 80STORE and PAGE2 ON -------
+   556                          	;; (400-7ff is pointing at aux mem)
+   557                          
+   558                          	;; Test 9: everything reset.
+   559  66f3 a909               	lda #9
+   560  66f5 8d01c0             	sta SET_80STORE
+   561  66f8 8d55c0             	sta SET_PAGE2
+   562  66fb 209764             	jsr .check
+   563  66fe 8002020102030304...	!byte .C_skip, 2, 2, 1, 2, 3, 3, 4, 3
+   564                          
+   565                          	;; Test A: write to aux
+   566  6707 a90a               	lda #$a
+   567  6709 8d05c0             	sta SET_RAMWRT
+   568  670c 8d01c0             	sta SET_80STORE
+   569  670f 8d55c0             	sta SET_PAGE2
+   570  6712 209764             	jsr .check
+   571  6715 8002010101030204...	!byte .C_skip, 2, 1, 1, 1, 3, 2, 4, 2
+   572                          
+   573                          	;; Test B: read from aux
+   574  671e a90b               	lda #$b
+   575  6720 8d03c0             	sta SET_RAMRD
+   576  6723 8d01c0             	sta SET_80STORE
+   577  6726 8d55c0             	sta SET_PAGE2
+   578  6729 209764             	jsr .check
+   579  672c 8002040104030304...	!byte .C_skip, 2, 4, 1, 4, 3, 3, 4, 3
+   580                          
+   581                          	;; Test C: read and write aux
+   582  6735 a90c               	lda #$c
+   583  6737 8d03c0             	sta SET_RAMRD
+   584  673a 8d05c0             	sta SET_RAMWRT
+   585  673d 8d01c0             	sta SET_80STORE
+   586  6740 8d55c0             	sta SET_PAGE2
+   587  6743 209764             	jsr .check
+   588  6746 8002010101030404...	!byte .C_skip, 2, 1, 1, 1, 3, 4, 4, 4
+   589                          
+   590                          	;; Our four basic tests, but with 80STORE and HIRES ON -------
+   591                          	;; (400-7ff and 2000-3fff are pointing at main mem)
+   592                          
+   593                          	;; Test D: everything reset.
+   594  674f a90d               	lda #$d
+   595  6751 8d01c0             	sta SET_80STORE
+   596  6754 8d57c0             	sta SET_HIRES
+   597  6757 209764             	jsr .check
+   598  675a 8002020202030303...	!byte .C_skip, 2, 2, 2, 2, 3, 3, 3, 3
+   599                          
+   600                          	;; Test E: write to aux
+   601  6763 a90e               	lda #$e
+   602  6765 8d05c0             	sta SET_RAMWRT
+   603  6768 8d01c0             	sta SET_80STORE
+   604  676b 8d57c0             	sta SET_HIRES
+   605  676e 209764             	jsr .check
+   606  6771 8002010202030203...	!byte .C_skip, 2, 1, 2, 2, 3, 2, 3, 3
+   607                          
+   608                          	;; Test F: read from aux
+   609  677a a90f               	lda #$f
+   610  677c 8d03c0             	sta SET_RAMRD
+   611  677f 8d01c0             	sta SET_80STORE
+   612  6782 8d57c0             	sta SET_HIRES
+   613  6785 209764             	jsr .check
+   614  6788 8002040202030303...	!byte .C_skip, 2, 4, 2, 2, 3, 3, 3, 3
+   615                          
+   616                          	;; Test 10: read and write aux
+   617  6791 a910               	lda #$10
+   618  6793 8d03c0             	sta SET_RAMRD
+   619  6796 8d05c0             	sta SET_RAMWRT
+   620  6799 8d01c0             	sta SET_80STORE
+   621  679c 8d57c0             	sta SET_HIRES
+   622  679f 209764             	jsr .check
+   623  67a2 8002010202030403...	!byte .C_skip, 2, 1, 2, 2, 3, 4, 3, 3
+   624                          
+   625                          	;; Our four basic tests, but with 80STORE, HIRES, PAGE2 ON ---
+   626                          	;; (400-7ff and 2000-3fff are pointing at aux mem)
+   627                          
+   628                          	;; Test 11: everything reset.
+   629  67ab a911               	lda #$11
+   630  67ad 8d01c0             	sta SET_80STORE
+   631  67b0 8d57c0             	sta SET_HIRES
+   632  67b3 8d55c0             	sta SET_PAGE2
+   633  67b6 209764             	jsr .check
+   634  67b9 8002020101030304...	!byte .C_skip, 2, 2, 1, 1, 3, 3, 4, 4
+   635                          
+   636                          	;; Test 12: write to aux
+   637  67c2 a912               	lda #$12
+   638  67c4 8d05c0             	sta SET_RAMWRT
+   639  67c7 8d01c0             	sta SET_80STORE
+   640  67ca 8d57c0             	sta SET_HIRES
+   641  67cd 8d55c0             	sta SET_PAGE2
+   642  67d0 209764             	jsr .check
+   643  67d3 8002010101030204...	!byte .C_skip, 2, 1, 1, 1, 3, 2, 4, 4
+   644                          
+   645                          	;; Test 13: read from aux
+   646  67dc a913               	lda #$13
+   647  67de 8d03c0             	sta SET_RAMRD
+   648  67e1 8d01c0             	sta SET_80STORE
+   649  67e4 8d57c0             	sta SET_HIRES
+   650  67e7 8d55c0             	sta SET_PAGE2
+   651  67ea 209764             	jsr .check
+   652  67ed 8002040101030304...	!byte .C_skip, 2, 4, 1, 1, 3, 3, 4, 4
+   653                          
+   654                          	;; Test 14: read and write aux
+   655  67f6 a914               	lda #$14
+   656  67f8 8d03c0             	sta SET_RAMRD
+   657  67fb 8d05c0             	sta SET_RAMWRT
+   658  67fe 8d01c0             	sta SET_80STORE
+   659  6801 8d57c0             	sta SET_HIRES
+   660  6804 8d55c0             	sta SET_PAGE2
+   661  6807 209764             	jsr .check
+   662  680a 8002010101030404...	!byte .C_skip, 2, 1, 1, 1, 3, 4, 4, 4
+   663                          
+   664                          	;; Test 15: Cxxx test with everything reset.
+   665  6813 a915               	lda #$15
+   666  6815 209764             	jsr .check
+   667  6818 0802020202030303...	!byte .C_3, 2, 2, 2, 2, 3, 3, 3, 3
+   668                          
+   669                          	;; Test 16: Cxxx test with SLOTC3ROM set
+   670  6821 a916               	lda #$16
+   671  6823 8d0bc0             	sta SET_SLOTC3ROM
+   672  6826 209764             	jsr .check
+   673  6829 0002020202030303...	!byte .C_0, 2, 2, 2, 2, 3, 3, 3, 3
+   674                          
+   675                          	;; Test 17: Cxxx test with INTCXROM set.
+   676  6832 a917               	lda #$17
+   677  6834 8d07c0             	sta SET_INTCXROM
+   678  6837 209764             	jsr .check
+   679  683a 0f02020202030303...	!byte .C_1348, 2, 2, 2, 2, 3, 3, 3, 3
+   680                          
+   681                          	;; Test 18: Cxxx test with SLOTC3ROM and INTCXROM set
+   682  6843 a918               	lda #$18
+   683  6845 8d0bc0             	sta SET_SLOTC3ROM
+   684  6848 8d07c0             	sta SET_INTCXROM
+   685  684b 209764             	jsr .check
+   686  684e 0f02020202030303...	!byte .C_1348, 2, 2, 2, 2, 3, 3, 3, 3
+   687                          
+   688                          	;; Test 19: Cxxx test with "INTC8ROM" set
+   689  6857 a919               	lda #$19
+   690  6859 ad00c3             	lda $C300
+   691  685c 209764             	jsr .check
+   692  685f 0902020202030303...	!byte .C_38, 2, 2, 2, 2, 3, 3, 3, 3
+   693                          
+   694                          	;; Test 1A: Cxxx test showing inability to reset "INTC8ROM" with softswitches.
+   695  6868 a91a               	lda #$1A
+   696  686a ad00c3             	lda $C300
+   697  686d 8d0bc0             	sta SET_SLOTC3ROM
+   698  6870 209764             	jsr .check
+   699  6873 0102020202030303...	!byte .C_8f, 2, 2, 2, 2, 3, 3, 3, 3
+   700                          
+   701                          	;; Test 1B: Cxxx test showing ability to reset "INTC8ROM" with CFFF reference.
+   702  687c a91b               	lda #$1B
+   703  687e ad00c3             	lda $C300
+   704  6881 8d0bc0             	sta SET_SLOTC3ROM
+   705  6884 adffcf             	lda RESET_INTC8ROM
+   706  6887 209764             	jsr .check
+   707  688a 0002020202030303...	!byte .C_0, 2, 2, 2, 2, 3, 3, 3, 3
+   708                          
+   709                          	;; Test 1C: Cxxx test showing inability to reset "INTC8ROM" with CFFF reference.
+   710  6893 a91b               	lda #$1B
+   711  6895 8d0bc0             	sta SET_SLOTC3ROM
+   712  6898 8d07c0             	sta SET_INTCXROM
+   713  689b adffcf             	lda RESET_INTC8ROM
+   714  689e 209764             	jsr .check
+   715  68a1 0f02020202030303...	!byte .C_1348, 2, 2, 2, 2, 3, 3, 3, 3
+   716                          
+   717                          	;; Test 1D: Cxxx test showing that "INTC8ROM" isn't set if SLOTC3ROM isn't reset.
+   718  68aa a91d               	lda #$1D
+   719  68ac 8d07c0             	sta SET_INTCXROM
+   720  68af 8d0bc0             	sta SET_SLOTC3ROM
+   721  68b2 ad00c3             	lda $C300
+   722  68b5 8d06c0             	sta RESET_INTCXROM
+   723  68b8 209764             	jsr .check
+   724  68bb 0002020202030303...	!byte .C_0, 2, 2, 2, 2, 3, 3, 3, 3
+   725                          
+   726  68c4 00                 	!byte 0 ; end of tests
+   727                          
+   728                          .memorylocs
+   729                          	;; zero page locations
+   730  68c5 ff0000010000       	!word $ff, $100, 0
+   731                          	;; main memory locations
+   732  68cb 0002ff030008ff1f...	!word $200, $3ff, $800, $1fff, $4000, $5fff, $bfff, 0
+   733                          	;; text locations
+   734  68db 2704ff070000       	!word $427, $7ff, 0
+   735                          	;; hires locations
+   736  68e1 0020ff3f0000       	!word $2000, $3fff, 0
+   737                          	;; end
+   738                          .memorylen = * - .memorylocs - 2
+   739  68e7 0000               	!word 0
+   740                          
+   741                          .cxtestdata
+   742                          	;; C800-Cffe
+   743  68e9 00c84c             	!byte $00, $c8, $4c
+   744  68ec 21ca8d             	!byte $21, $ca, $8d
+   745  68ef 43ccf0             	!byte $43, $cc, $f0
+   746  68f2 b5ce7b             	!byte $b5, $ce, $7b
+   747                          
+   748                          	;; C100-C2ff
+   749  68f5 4dc1a5             	!byte $4d, $c1, $a5
+   750  68f8 6cc12a             	!byte $6c, $c1, $2a
+   751  68fb b5c2ad             	!byte $b5, $c2, $ad
+   752  68fe ffc200             	!byte $ff, $c2, $00
+   753                          
+   754                          	;; C400-C7ff
+   755  6901 36c48d             	!byte $36, $c4, $8d
+   756  6904 48c518             	!byte $48, $c5, $18
+   757  6907 80c68b             	!byte $80, $c6, $8b
+   758  690a 6ec7cb             	!byte $6e, $c7, $cb
+   759                          
+   760                          	;; C300-C3ff
+   761  690d 00c32c             	!byte $00, $c3, $2c
+   762  6910 0ac30c             	!byte $0a, $c3, $0c
+   763  6913 2bc304             	!byte $2b, $c3, $04
+   764  6916 e2c3ed             	!byte $e2, $c3, $ed
+   765                          } ;auxmem
+
+; ******** Source: audit.asm
+
+; ******** Source: softswitch.asm
+     1                          ;;; Apple IIe softswitch-reading tests
+     2                          ;;; Copyright © 2017 Zellyn Hunter <zellyn@gmail.com>
+     3                          
+     4                          !zone softswitch {
+     5                          
+     6                          	.resetloc = tmp1
+     7                          	.setloc = tmp3
+     8                          	.readloc = tmp5
+     9                          	.loopcount = tmp0
+    10                          	.switch = SRC
+    11                          	.testtimes = 8
+    12                          	
+    13                          SOFTSWITCHTESTS
+    14  6919 a901               	lda #1
+    15  691b 8513               	sta SOFTSWITCHRESULT
+    16                          
+    17  691d ade472             	lda MACHINE
+    18  6920 c904               	cmp #4
+    19  6922 b005               	bcs +
+    20  6924 204885208870       	+print
+    21  854b cecfd4a0c9c9c5a0...	!text "NOT IIE OR IIC:SKIPPING SOFTSWITCH TEST",$8D
+    22  8573 00                 	+printed
+    23  6927 38                 	sec
+    24  6928 60                 	rts
+    25                          
+    26  6929 207485208870       +	+print
+    27  8577 d4c5d3d4c9cec7a0...	!text "TESTING SOFTSWITCHES",$8D
+    28  858c 00                 	+printed
+    29                          
+    30                          	;; Test write-softswitches
+    31  692c a98a               	lda #<.writeswitches
+    32  692e 8506               	sta SRC
+    33  6930 a96a               	lda #>.writeswitches
+    34  6932 8507               	sta SRC+1
+    35  6934 a908               	lda #(.readswitches-.writeswitches)/6
+    36  6936 85f9               	sta .loopcount
+    37                          
+    38                          	;; Check memory: <= 65K: don't test RAMRD
+    39  6938 ade672             	lda MEMORY
+    40  693b c942               	cmp #66
+    41  693d b00f               	bcs .wrtloop		; Enough memory: continue
+    42                          
+    43                          	;; Not enough: skip one loop iteration, and increment SRC past RAMRD addresses
+    44  693f c6f9               	dec .loopcount
+    45  6941 18                 	clc
+    46  6942 a506               	lda SRC
+    47  6944 6906               	adc #6
+    48  6946 8506               	sta SRC
+    49  6948 a507               	lda SRC+1
+    50  694a 6900               	adc #0
+    51  694c 8507               	sta SRC+1
+    52                          
+    53                          .wrtloop
+    54                          	;; Copy reset/set/read locations to .resetloc, .setloc, .readloc
+    55  694e a000               	ldy #0
+    56  6950 a200               	ldx #0
+    57  6952 b106               -	lda (SRC),y
+    58  6954 95fa               	sta .resetloc,x
+    59  6956 e606               	inc SRC
+    60  6958 d002               	bne +
+    61  695a e607               	inc SRC+1
+    62  695c e8                 +	inx
+    63  695d e006               	cpx #6
+    64  695f d0f1               	bne -
+    65                          
+    66  6961 20d26a             	jsr RESETALL
+    67  6964 203c66             	jsr zptoaux
+    68                          	
+    69                          	;; Initial RESET
+    70  6967 a000               	ldy #0
+    71  6969 91fa               	sta (.resetloc),y
+    72  696b a208               	ldx #.testtimes		; test `.testtimes` times
+    73  696d b1fe               -	lda (.readloc),y
+    74  696f 100a               	bpl +			;ok
+    75  6971 a280               	ldx #$80
+    76  6973 20d26a             	jsr RESETALL
+    77  6976 203b6a             	jsr .fail
+    78  6979 f048               	beq .wrtloopend
+    79  697b ca                 +	dex
+    80  697c d0ef               	bne -
+    81                          
+    82                          	;; Ensure that reading doesn't do anything.
+    83  697e a000               	ldy #0
+    84  6980 b1fc               	lda (.setloc),y
+    85  6982 a208               	ldx #.testtimes		; test `.testtimes` times
+    86  6984 b1fe               -	lda (.readloc),y
+    87  6986 100a               	bpl +			;ok
+    88  6988 a242               	ldx #$42
+    89  698a 20d26a             	jsr RESETALL
+    90  698d 203b6a             	jsr .fail
+    91  6990 f031               	beq .wrtloopend
+    92  6992 ca                 +	dex
+    93  6993 d0ef               	bne -
+    94                          
+    95                          	;; Actual SET
+    96  6995 a000               	ldy #0
+    97  6997 91fc               	sta (.setloc),y
+    98  6999 a208               	ldx #.testtimes		; test `.testtimes` times
+    99  699b b1fe               -	lda (.readloc),y
+   100  699d 300a               	bmi +			;ok
+   101  699f a282               	ldx #$82
+   102  69a1 20d26a             	jsr RESETALL
+   103  69a4 203b6a             	jsr .fail
+   104  69a7 f01a               	beq .wrtloopend
+   105  69a9 ca                 +	dex
+   106  69aa d0ef               	bne -
+   107                          
+   108                          	;; RESET again
+   109  69ac a000               	ldy #0
+   110  69ae 91fa               	sta (.resetloc),y
+   111  69b0 a208               	ldx #.testtimes		; test `.testtimes` times
+   112  69b2 b1fe               -	lda (.readloc),y
+   113  69b4 100a               	bpl +			;ok
+   114  69b6 a280               	ldx #$80
+   115  69b8 20d26a             	jsr RESETALL
+   116  69bb 203b6a             	jsr .fail
+   117  69be f003               	beq .wrtloopend
+   118  69c0 ca                 +	dex
+   119  69c1 d0ef               	bne -
+   120                          
+   121                          .wrtloopend
+   122  69c3 c6f9               	dec .loopcount
+   123  69c5 d087               	bne .wrtloop
+   124                          
+   125  69c7 a904               	lda #(.endswitches-.readswitches)/6
+   126  69c9 85f9               	sta .loopcount
+   127                          	
+   128                          	
+   129                          .readloop
+   130                          	;; Copy reset/set/read locations to .resetloc, .setloc, .readloc
+   131  69cb a000               	ldy #0
+   132  69cd a200               	ldx #0
+   133  69cf b106               -	lda (SRC),y
+   134  69d1 95fa               	sta .resetloc,x
+   135  69d3 e606               	inc SRC
+   136  69d5 d002               	bne +
+   137  69d7 e607               	inc SRC+1
+   138  69d9 e8                 +	inx
+   139  69da e006               	cpx #6
+   140  69dc d0f1               	bne -
+   141                          
+   142  69de 20d26a             	jsr RESETALL
+   143  69e1 203c66             	jsr zptoaux
+   144                          	
+   145                          	;; Initial RESET
+   146  69e4 a000               	ldy #0
+   147  69e6 b1fa               	lda (.resetloc),y
+   148  69e8 a208               	ldx #.testtimes		; test `.testtimes` times
+   149  69ea b1fe               -	lda (.readloc),y
+   150  69ec 100a               	bpl +			;ok
+   151  69ee a200               	ldx #$00
+   152  69f0 20d26a             	jsr RESETALL
+   153  69f3 203b6a             	jsr .fail
+   154  69f6 f031               	beq .readloopend
+   155  69f8 ca                 +	dex
+   156  69f9 d0ef               	bne -
+   157                          
+   158                          	;; Actual SET
+   159  69fb a000               	ldy #0
+   160  69fd b1fc               	lda (.setloc),y
+   161  69ff a208               	ldx #.testtimes		; test `.testtimes` times
+   162  6a01 b1fe               -	lda (.readloc),y
+   163  6a03 300a               	bmi +			;ok
+   164  6a05 a202               	ldx #$02
+   165  6a07 20d26a             	jsr RESETALL
+   166  6a0a 203b6a             	jsr .fail
+   167  6a0d f01a               	beq .readloopend
+   168  6a0f ca                 +	dex
+   169  6a10 d0ef               	bne -
+   170                          
+   171                          	;; RESET again
+   172  6a12 a000               	ldy #0
+   173  6a14 b1fa               	lda (.resetloc),y
+   174  6a16 a208               	ldx #.testtimes		; test `.testtimes` times
+   175  6a18 b1fe               -	lda (.readloc),y
+   176  6a1a 100a               	bpl +			;ok
+   177  6a1c a200               	ldx #$00
+   178  6a1e 20d26a             	jsr RESETALL
+   179  6a21 203b6a             	jsr .fail
+   180  6a24 f003               	beq .readloopend
+   181  6a26 ca                 +	dex
+   182  6a27 d0ef               	bne -
+   183                          
+   184                          .readloopend
+   185  6a29 c6f9               	dec .loopcount
+   186  6a2b d09e               	bne .readloop
+   187                          
+   188                          
+   189                          .end
+   190  6a2d 20d26a             	jsr RESETALL
+   191  6a30 a513               	lda SOFTSWITCHRESULT
+   192  6a32 d002               	bne .success
+   193  6a34 38                 	sec
+   194  6a35 60                 	rts
+   195                          .success	
+   196  6a36 208d85208870       	+print
+   197  8590 d3cfc6d4d3d7c9d4...	!text "SOFTSWITCH TESTS SUCCEEDED",$8D
+   198  85ab 00                 	+printed
+   199  6a39 18                 	clc
+   200  6a3a 60                 	rts
+   201                          
+   202                          ;;; Print failure message.
+   203                          ;;; High bit of X = write. Low two bits of X: 0 = .resetloc, 2 = .setloc
+   204                          ;;; A = actual value read (which tells what we expected: the opposite)
+   205                          .fail
+   206  6a3b 8501               	sta SCRATCH
+   207  6a3d 8602               	stx SCRATCH2
+   208  6a3f 8a                 	txa
+   209  6a40 3005               	bmi +
+   210  6a42 20ac85208870       	+print
+   211  85af d2c5c1c4           	!text "READ"
+   212  85b3 00                 	+printed
+   213  6a45 f003               	beq ++
+   214  6a47 20b485208870       +	+print
+   215  85b7 d7d2c9d4c5         	!text "WRITE"
+   216  85bc 00                 	+printed
+   217  6a4a 20bd85208870       ++	+print
+   218  85c0 a0c1d4a0           	!text " AT "
+   219  85c4 00                 	+printed
+   220  6a4d 8a                 	txa
+   221  6a4e 2903               	and #$3
+   222  6a50 aa                 	tax
+   223  6a51 b4fb               	ldy .resetloc+1,x
+   224  6a53 b5fa               	lda .resetloc,x
+   225  6a55 aa                 	tax
+   226  6a56 205e6b             	jsr PRNTYX
+   227  6a59 20c585208870       	+print
+   228  85c8 a0d3c8cfd5ccc4a0   	!text " SHOULD "
+   229  85d0 00                 	+printed
+   230  6a5c a502               	lda SCRATCH2
+   231  6a5e 2940               	and #$40
+   232  6a60 f005               	beq +
+   233  6a62 20d185208870       	+print
+   234  85d4 cecfd4a0d3c5d4a0   	!text "NOT SET "
+   235  85dc 00                 	+printed
+   236  6a65 f00a               	beq ++
+   237  6a67 a501               +	lda SCRATCH
+   238  6a69 1003               	bpl +
+   239  6a6b 20dd85208870       	+print
+   240  85e0 d2c5               	!text "RE"
+   241  85e2 00                 	+printed
+   242  6a6e 20e385208870       +	+print
+   243  85e6 d3c5d4a0           	!text "SET "
+   244  85ea 00                 	+printed
+   245  6a71 a6fe               ++	ldx .readloc
+   246  6a73 a4ff               	ldy .readloc+1
+   247  6a75 205e6b             	jsr PRNTYX
+   248  6a78 20eb85208870       	+print
+   249  85ee bbc7cfd4a0         	!text ";GOT " 
+   250  85f3 00                 	+printed
+   251  6a7b a501               	lda SCRATCH
+   252  6a7d 20886c             	jsr PRBYTE
+   253  6a80 a98d               	lda #$8D
+   254  6a82 209b6c             	jsr COUT
+   255  6a85 a900               	lda #0
+   256  6a87 8513               	sta SOFTSWITCHRESULT
+   257  6a89 60                 	rts
+   258                          	
+   259                          .writeswitches
+   260  6a8a 02c003c013c0       	!word RESET_RAMRD, SET_RAMRD, READ_RAMRD
+   261  6a90 04c005c014c0       	!word RESET_RAMWRT, SET_RAMWRT, READ_RAMWRT
+   262  6a96 00c001c018c0       	!word RESET_80STORE, SET_80STORE, READ_80STORE
+   263  6a9c 08c009c016c0       	!word RESET_ALTZP, SET_ALTZP, READ_ALTZP
+   264  6aa2 06c007c015c0       	!word RESET_INTCXROM, SET_INTCXROM, READ_INTCXROM
+   265  6aa8 0ac00bc017c0       	!word RESET_SLOTC3ROM, SET_SLOTC3ROM, READ_SLOTC3ROM
+   266  6aae 0cc00dc01fc0       	!word RESET_80COL, SET_80COL, READ_80COL
+   267  6ab4 0ec00fc01ec0       	!word RESET_ALTCHRSET, SET_ALTCHRSET, READ_ALTCHRSET
+   268                          .readswitches
+   269  6aba 50c051c01ac0       	!word RESET_TEXT, SET_TEXT, READ_TEXT
+   270  6ac0 52c053c01bc0       	!word RESET_MIXED, SET_MIXED, READ_MIXED
+   271  6ac6 54c055c01cc0       	!word RESET_PAGE2, SET_PAGE2, READ_PAGE2
+   272  6acc 56c057c01dc0       	!word RESET_HIRES, SET_HIRES, READ_HIRES
+   273                          .endswitches
+   274                          } ;softswitch
+
+; ******** Source: audit.asm
+
+; ******** Source: resetall.asm
+     1                          ;;; Apple II/IIe reset-everything routine
+     2                          ;;; Copyright © 2017 Zellyn Hunter <zellyn@gmail.com>
+     3                          
+     4                          !zone resetall {
+     5                          
+     6                          ;;; Reset all soft-switches to known-good state. Burns $300 and $301 in main mem.
+     7                          RESETALL
+     8  6ad2 8d02c0             	sta RESET_RAMRD
+     9  6ad5 8d04c0             	sta RESET_RAMWRT
+    10  6ad8 8e0003             	stx $300
+    11  6adb 8d0103             	sta $301
+    12                          
+    13                          	;; Save return address in X and A, in case we switch zero-page memory.
+    14  6ade 68                 	pla
+    15  6adf aa                 	tax
+    16  6ae0 68                 	pla
+    17                          
+    18  6ae1 8d00c0             	sta RESET_80STORE
+    19  6ae4 8d06c0             	sta RESET_INTCXROM
+    20  6ae7 8d08c0             	sta RESET_ALTZP
+    21  6aea 8d0ac0             	sta RESET_SLOTC3ROM
+    22  6aed 8dffcf             	sta RESET_INTC8ROM
+    23  6af0 8d0cc0             	sta RESET_80COL
+    24  6af3 8d0ec0             	sta RESET_ALTCHRSET
+    25  6af6 8d51c0             	sta SET_TEXT
+    26  6af9 8d52c0             	sta RESET_MIXED
+    27  6afc 8d54c0             	sta RESET_PAGE2
+    28  6aff 8d56c0             	sta RESET_HIRES
+    29                          
+    30                          	;; Restore return address from X and A.
+    31  6b02 48                 	pha
+    32  6b03 8a                 	txa
+    33  6b04 48                 	pha
+    34                          
+    35  6b05 ae0003             	ldx $300
+    36  6b08 ad0103             	lda $301
+    37  6b0b 60                 	rts
+    38                          }
+
+; ******** Source: audit.asm
+
+; ******** Source: monitor-routines.asm
+     1                          !zone monitor {
+     2                          
+     3                          .LOC0     =   $00
+     4                          .LOC1     =   $01
+     5                          .WNDLFT   =   $20
+     6                          .WNDWDTH  =   $21
+     7                          .WNDTOP   =   $22
+     8                          .WNDBTM   =   $23
+     9                          .CH       =   $24
+    10                          .CV       =   $25
+    11                          .GBASL    =   $26
+    12                          .GBASH    =   $27
+    13                          .BASL     =   $28
+    14                          .BASH     =   $29
+    15                          .BAS2L    =   $2A
+    16                          .BAS2H    =   $2B
+    17                          .V2       =   $2D
+    18                          .MASK     =   $2E
+    19                          .COLOR    =   $30
+    20                          .INVFLG   =   $32
+    21                          .YSAV1    =   $35
+    22                          .CSWL     =   $36
+    23                          .CSWH     =   $37
+    24                          .KSWL     =   $38
+    25                          .KSWH     =   $39
+    26                          .A2L      =   $3E
+    27                          .STATUS   =   $48
+    28                          .RNDL     =   $4E
+    29                          .RNDH     =   $4F
+    30                          
+    31                          
+    32                          .IOADR    =   $C000
+    33                          .KBD      =   $C000
+    34                          .KBDSTRB  =   $C010
+    35                          .SPKR     =   $C030
+    36                          .LORES    =   $C056
+    37                          .LOWSCR   =   $C054
+    38                          .TXTSET   =   $C051
+    39                          .TXTCLR   =   $C050
+    40                          .MIXSET   =   $C053
+    41                          
+    42  6b0c 4a                 .PLOT    LSR              ;Y-COORD/2
+    43  6b0d 08                          PHP              ;SAVE LSB IN CARRY
+    44  6b0e 20466b                      JSR   .GBASCALC  ;CALC BASE ADR IN GBASL,H
+    45  6b11 28                          PLP              ;RESTORE LSB FROM CARRY
+    46  6b12 a90f                        LDA   #$0F       ;MASK $0F IF EVEN
+    47  6b14 9002                        BCC   .RTMASK
+    48  6b16 69e0                        ADC   #$E0       ;MASK $F0 IF ODD
+    49  6b18 852e               .RTMASK  STA   .MASK
+    50  6b1a b126               .PLOT1   LDA   (.GBASL),Y ;DATA
+    51  6b1c 4530                        EOR   .COLOR     ; EOR COLOR
+    52  6b1e 252e                        AND   .MASK      ;  AND MASK
+    53  6b20 5126                        EOR   (.GBASL),Y ;   EOR DATA
+    54  6b22 9126                        STA   (.GBASL),Y ;    TO DATA
+    55  6b24 60                          RTS
+    56                          
+    57  6b25 6901               .VLINEZ  ADC   #$01       ;NEXT Y-COORD
+    58  6b27 48                 .VLINE   PHA              ; SAVE ON STACK
+    59  6b28 200c6b                      JSR   .PLOT      ; PLOT SQUARE
+    60  6b2b 68                          PLA
+    61  6b2c c52d                        CMP   .V2        ;DONE?
+    62  6b2e 90f5                        BCC   .VLINEZ    ; NO, LOOP
+    63  6b30 60                 .RTS1    RTS
+    64  6b31 a02f               .CLRSCR  LDY   #$2F       ;MAX Y, FULL SCRN CLR
+    65  6b33 d002                        BNE   .CLRSC2    ;ALWAYS TAKEN
+    66  6b35 a027               .CLRTOP  LDY   #$27       ;MAX Y, TOP SCREEN CLR
+    67  6b37 842d               .CLRSC2  STY   .V2        ;STORE AS BOTTOM COORD
+    68                                                    ; FOR VLINE CALLS
+    69  6b39 a027                        LDY   #$27       ;RIGHTMOST X-COORD (COLUMN)
+    70  6b3b a900               .CLRSC3  LDA   #$00       ;TOP COORD FOR VLINE CALLS
+    71  6b3d 8530                        STA   .COLOR     ;CLEAR COLOR (BLACK)
+    72  6b3f 20276b                      JSR   .VLINE     ;DRAW VLINE
+    73  6b42 88                          DEY              ;NEXT LEFTMOST X-COORD
+    74  6b43 10f6                        BPL   .CLRSC3    ;LOOP UNTIL DONE
+    75  6b45 60                          RTS
+    76  6b46 48                 .GBASCALC PHA             ;FOR INPUT 000DEFGH
+    77  6b47 4a                          LSR
+    78  6b48 2903                        AND   #$03
+    79  6b4a 0904                        ORA   #$04       ;  GENERATE GBASH=000001FG
+    80  6b4c 8527                        STA   .GBASH
+    81  6b4e 68                          PLA              ;  AND GBASL=HDEDE000
+    82  6b4f 2918                        AND   #$18
+    83  6b51 9002                        BCC   .GBCALC
+    84  6b53 697f                        ADC   #$7F
+    85  6b55 8526               .GBCALC  STA   .GBASL
+    86  6b57 0a                          ASL
+    87  6b58 0a                          ASL
+    88  6b59 0526                        ORA   .GBASL
+    89  6b5b 8526                        STA   .GBASL
+    90  6b5d 60                          RTS
+    91                          
+    92  6b5e 98                 PRNTYX   TYA
+    93  6b5f 20886c             .PRNTAX  JSR   PRBYTE     ;OUTPUT TARGET ADR
+    94  6b62 8a                 .PRNTX   TXA              ;  OF BRANCH AND RETURN
+    95  6b63 4c886c                      JMP   PRBYTE
+    96                          
+    97  6b66 a900               .INIT    LDA   #$00       ;CLR STATUS FOR DEBUG
+    98  6b68 8548                        STA   .STATUS    ;  SOFTWARE
+    99  6b6a ad56c0                      LDA   .LORES
+   100  6b6d ad54c0                      LDA   .LOWSCR    ;INIT VIDEO MODE
+   101  6b70 ad51c0             .SETTXT  LDA   .TXTSET    ;SET FOR TEXT MODE
+   102  6b73 a900                        LDA   #$00       ;  FULL SCREEN WINDOW
+   103  6b75 f00b                        BEQ   .SETWND
+   104  6b77 ad50c0             .SETGR   LDA   .TXTCLR    ;SET FOR GRAPHICS MODE
+   105  6b7a ad53c0                      LDA   .MIXSET    ;  LOWER 4 LINES AS
+   106  6b7d 20356b                      JSR   .CLRTOP    ;  TEXT WINDOW
+   107  6b80 a914                        LDA   #$14
+   108  6b82 8522               .SETWND  STA   .WNDTOP    ;SET FOR 40 COL WINDOW
+   109  6b84 a900                        LDA   #$00       ;  TOP IN A-REG,
+   110  6b86 8520                        STA   .WNDLFT    ;  BTTM AT LINE 24
+   111  6b88 a928                        LDA   #$28
+   112  6b8a 8521                        STA   .WNDWDTH
+   113  6b8c a918                        LDA   #$18
+   114  6b8e 8523                        STA   .WNDBTM    ;  VTAB TO ROW 23
+   115  6b90 a917                        LDA   #$17
+   116  6b92 8525               .TABV    STA   .CV        ;VTABS TO ROW IN A-REG
+   117  6b94 4cf86b                      JMP   .VTAB
+   118                          
+   119  6b97 48                 .BASCALC PHA              ;CALC BASE ADR IN BASL,H
+   120  6b98 4a                          LSR              ;  FOR GIVEN LINE NO
+   121  6b99 2903                        AND   #$03       ;  0<=LINE NO.<=$17
+   122  6b9b 0904                        ORA   #$04       ;ARG=000ABCDE, GENERATE
+   123  6b9d 8529                        STA   .BASH      ;  BASH=000001CD
+   124  6b9f 68                          PLA              ;  AND
+   125  6ba0 2918                        AND   #$18       ;  BASL=EABAB000
+   126  6ba2 9002                        BCC   .BSCLC2
+   127  6ba4 697f                        ADC   #$7F
+   128  6ba6 8528               .BSCLC2  STA   .BASL
+   129  6ba8 0a                          ASL
+   130  6ba9 0a                          ASL
+   131  6baa 0528                        ORA   .BASL
+   132  6bac 8528                        STA   .BASL
+   133  6bae 60                          RTS
+   134  6baf c987               .BELL1   CMP   #$87       ;BELL CHAR? (CNTRL-G)
+   135  6bb1 d012                        BNE   .RTS2B     ;  NO, RETURN
+   136  6bb3 a940                        LDA   #$40       ;DELAY .01 SECONDS
+   137  6bb5 20646c                      JSR   .WAIT
+   138  6bb8 a0c0                        LDY   #$C0
+   139  6bba a90c               .BELL2   LDA   #$0C       ;TOGGLE SPEAKER AT
+   140  6bbc 20646c                      JSR   .WAIT      ;  1 KHZ FOR .1 SEC.
+   141  6bbf ad30c0                      LDA   .SPKR
+   142  6bc2 88                          DEY
+   143  6bc3 d0f5                        BNE   .BELL2
+   144  6bc5 60                 .RTS2B   RTS
+   145  6bc6 a424               .STOADV  LDY   .CH        ;CURSOR H INDEX TO Y-REG
+   146  6bc8 9128                        STA   (.BASL),Y  ;STORE CHAR IN LINE
+   147  6bca e624               .ADVANCE INC   .CH        ;INCREMENT CURSOR H INDEX
+   148  6bcc a524                        LDA   .CH        ;  (MOVE RIGHT)
+   149  6bce c521                        CMP   .WNDWDTH   ;BEYOND WINDOW WIDTH?
+   150  6bd0 b04c                        BCS   .CR        ;  YES CR TO NEXT LINE
+   151  6bd2 60                 .RTS3    RTS              ;  NO,RETURN
+   152  6bd3 c9a0               .VIDOUT  CMP   #$A0       ;CONTROL CHAR?
+   153  6bd5 b0ef                        BCS   .STOADV    ;  NO,OUTPUT IT.
+   154  6bd7 a8                          TAY              ;INVERSE VIDEO?
+   155  6bd8 10ec                        BPL   .STOADV    ;  YES, OUTPUT IT.
+   156  6bda c98d                        CMP   #$8D       ;CR?
+   157  6bdc f040                        BEQ   .CR        ;  YES.
+   158  6bde c98a                        CMP   #$8A       ;LINE FEED?
+   159  6be0 f040                        BEQ   .LF        ;  IF SO, DO IT.
+   160  6be2 c988                        CMP   #$88       ;BACK SPACE? (CNTRL-H)
+   161  6be4 d0c9                        BNE   .BELL1     ;  NO, CHECK FOR BELL.
+   162  6be6 c624               .BS      DEC   .CH        ;DECREMENT CURSOR H INDEX
+   163  6be8 10e8                        BPL   .RTS3      ;IF POS, OK. ELSE MOVE UP
+   164  6bea a521                        LDA   .WNDWDTH   ;SET CH TO WNDWDTH-1
+   165  6bec 8524                        STA   .CH
+   166  6bee c624                        DEC   .CH        ;(RIGHTMOST SCREEN POS)
+   167  6bf0 a522               .UP      LDA   .WNDTOP    ;CURSOR V INDEX
+   168  6bf2 c525                        CMP   .CV
+   169  6bf4 b00b                        BCS   .RTS4      ;IF TOP LINE THEN RETURN
+   170  6bf6 c625                        DEC   .CV        ;DEC CURSOR V-INDEX
+   171  6bf8 a525               .VTAB    LDA   .CV        ;GET CURSOR V-INDEX
+   172  6bfa 20976b             .VTABZ   JSR   .BASCALC   ;GENERATE BASE ADR
+   173  6bfd 6520                        ADC   .WNDLFT    ;ADD WINDOW LEFT INDEX
+   174  6bff 8528                        STA   .BASL      ;TO BASL
+   175  6c01 60                 .RTS4    RTS
+   176                          
+   177  6c02 48                 .CLEOP1  PHA              ;SAVE CURRENT LINE ON STK
+   178  6c03 20fa6b                      JSR   .VTABZ     ;CALC BASE ADDRESS
+   179  6c06 205a6c                      JSR   .CLEOLZ    ;CLEAR TO EOL, SET CARRY
+   180  6c09 a000                        LDY   #$00       ;CLEAR FROM H INDEX=0 FOR REST
+   181  6c0b 68                          PLA              ;INCREMENT CURRENT LINE
+   182  6c0c 6900                        ADC   #$00       ;(CARRY IS SET)
+   183  6c0e c523                        CMP   .WNDBTM    ;DONE TO BOTTOM OF WINDOW?
+   184  6c10 90f0                        BCC   .CLEOP1    ;  NO, KEEP CLEARING LINES
+   185  6c12 b0e4                        BCS   .VTAB      ;  YES, TAB TO CURRENT LINE
+   186  6c14 a522               HOME     LDA   .WNDTOP    ;INIT CURSOR V
+   187  6c16 8525                        STA   .CV        ;  AND H-INDICES
+   188  6c18 a000                        LDY   #$00
+   189  6c1a 8424                        STY   .CH        ;THEN CLEAR TO END OF PAGE
+   190  6c1c f0e4                        BEQ   .CLEOP1
+   191  6c1e a900               .CR      LDA   #$00       ;CURSOR TO LEFT OF INDEX
+   192  6c20 8524                        STA   .CH        ;(RET CURSOR H=0)
+   193  6c22 e625               .LF      INC   .CV        ;INCR CURSOR V(DOWN 1 LINE)
+   194  6c24 a525                        LDA   .CV
+   195  6c26 c523                        CMP   .WNDBTM    ;OFF SCREEN?
+   196  6c28 90d0                        BCC   .VTABZ     ;  NO, SET BASE ADDR
+   197  6c2a c625                        DEC   .CV        ;DECR CURSOR V (BACK TO BOTTOM)
+   198  6c2c a522               .SCROLL  LDA   .WNDTOP    ;START AT TOP OF SCRL WNDW
+   199  6c2e 48                          PHA
+   200  6c2f 20fa6b                      JSR   .VTABZ     ;GENERATE BASE ADR
+   201  6c32 a528               .SCRL1   LDA   .BASL      ;COPY BASL,H
+   202  6c34 852a                        STA   .BAS2L     ;  TO BAS2L,H
+   203  6c36 a529                        LDA   .BASH
+   204  6c38 852b                        STA   .BAS2H
+   205  6c3a a421                        LDY   .WNDWDTH   ;INIT Y TO RIGHTMOST INDEX
+   206  6c3c 88                          DEY              ;  OF SCROLLING WINDOW
+   207  6c3d 68                          PLA
+   208  6c3e 6901                        ADC   #$01       ;INCR LINE NUMBER
+   209  6c40 c523                        CMP   .WNDBTM    ;DONE?
+   210  6c42 b00d                        BCS   .SCRL3     ;  YES, FINISH
+   211  6c44 48                          PHA
+   212  6c45 20fa6b                      JSR   .VTABZ     ;FORM BASL,H (BASE ADDR)
+   213  6c48 b128               .SCRL2   LDA   (.BASL),Y  ;MOVE A CHR UP ON LINE
+   214  6c4a 912a                        STA   (.BAS2L),Y
+   215  6c4c 88                          DEY              ;NEXT CHAR OF LINE
+   216  6c4d 10f9                        BPL   .SCRL2
+   217  6c4f 30e1                        BMI   .SCRL1     ;NEXT LINE (ALWAYS TAKEN)
+   218  6c51 a000               .SCRL3   LDY   #$00       ;CLEAR BOTTOM LINE
+   219  6c53 205a6c                      JSR   .CLEOLZ    ;GET BASE ADDR FOR BOTTOM LINE
+   220  6c56 b0a0                        BCS   .VTAB      ;CARRY IS SET
+   221  6c58 a424               .CLREOL  LDY   .CH        ;CURSOR H INDEX
+   222  6c5a a9a0               .CLEOLZ  LDA   #$A0
+   223  6c5c 9128               .CLEOL2  STA   (.BASL),Y  ;STORE BLANKS FROM 'HERE'
+   224  6c5e c8                          INY              ;  TO END OF LINES (WNDWDTH)
+   225  6c5f c421                        CPY   .WNDWDTH
+   226  6c61 90f9                        BCC   .CLEOL2
+   227  6c63 60                          RTS
+   228  6c64 38                 .WAIT    SEC
+   229  6c65 48                 .WAIT2   PHA
+   230  6c66 e901               .WAIT3   SBC   #$01
+   231  6c68 d0fc                        BNE   .WAIT3     ;1.0204 USEC
+   232  6c6a 68                          PLA              ;(13+27/2*A+5/2*A*A)
+   233  6c6b e901                        SBC   #$01
+   234  6c6d d0f6                        BNE   .WAIT2
+   235  6c6f 60                          RTS
+   236                          
+   237  6c70 e64e               KEYIN    INC   .RNDL
+   238  6c72 d002                        BNE   .KEYIN2    ;INCR RND NUMBER
+   239  6c74 e64f                        INC   .RNDH
+   240  6c76 2c00c0             .KEYIN2  BIT   .KBD       ;KEY DOWN?
+   241  6c79 10f5                        BPL   KEYIN      ;  LOOP
+   242  6c7b 9128                        STA   (.BASL),Y  ;REPLACE FLASHING SCREEN
+   243  6c7d ad00c0                      LDA   .KBD       ;GET KEYCODE
+   244  6c80 2c10c0                      BIT   .KBDSTRB   ;CLR KEY STROBE
+   245  6c83 60                          RTS
+   246                          
+   247  6c84 a98d               CROUT    LDA   #$8D
+   248  6c86 d013                        BNE   COUT
+   249                          
+   250  6c88 48                 PRBYTE   PHA              ;PRINT BYTE AS 2 HEX
+   251  6c89 4a                          LSR              ;  DIGITS, DESTROYS A-REG
+   252  6c8a 4a                          LSR
+   253  6c8b 4a                          LSR
+   254  6c8c 4a                          LSR
+   255  6c8d 20936c                      JSR   .PRHEXZ
+   256  6c90 68                          PLA
+   257  6c91 290f               .PRHEX   AND   #$0F       ;PRINT HEX DIG IN A-REG
+   258  6c93 09b0               .PRHEXZ  ORA   #$B0       ;  LSB'S
+   259  6c95 c9ba                        CMP   #$BA
+   260  6c97 9002                        BCC   COUT
+   261  6c99 6906                        ADC   #$06
+   262  6c9b 6c3600             COUT     JMP   (.CSWL)    ;VECTOR TO USER OUTPUT ROUTINE
+   263  6c9e c9a0               COUT1    CMP   #$A0
+   264  6ca0 9002                        BCC   .COUTZ     ;DON'T OUTPUT CTRL'S INVERSE
+   265  6ca2 2532                        AND   .INVFLG    ;MASK WITH INVERSE FLAG
+   266  6ca4 8435               .COUTZ   STY   .YSAV1     ;SAV Y-REG
+   267  6ca6 48                          PHA              ;SAV A-REG
+   268  6ca7 20d36b                      JSR   .VIDOUT    ;OUTPUT A-REG AS ASCII
+   269  6caa 68                          PLA              ;RESTORE A-REG
+   270  6cab a435                        LDY   .YSAV1     ;  AND Y-REG
+   271  6cad 60                          RTS              ;  THEN RETURN
+   272                          
+   273  6cae a0ff               .SETNORM LDY   #$FF       ;SET FOR NORMAL VID
+   274  6cb0 8432               .SETIFLG STY   .INVFLG
+   275  6cb2 60                          RTS
+   276  6cb3 a900               .SETKBD  LDA   #$00       ;SIMULATE PORT #0 INPUT
+   277  6cb5 853e               .INPORT  STA   .A2L       ;  SPECIFIED (KEYIN ROUTINE)
+   278  6cb7 a238               .INPRT   LDX   #.KSWL
+   279  6cb9 a070                        LDY   #<KEYIN
+   280  6cbb d008                        BNE   .IOPRT
+   281  6cbd a900               .SETVID  LDA   #$00       ;SIMULATE PORT #0 OUTPUT
+   282  6cbf 853e               .OUTPORT STA   .A2L       ;  SPECIFIED (COUT1 ROUTINE)
+   283  6cc1 a236               .OUTPRT  LDX   #.CSWL
+   284  6cc3 a09e                        LDY   #<COUT1
+   285  6cc5 a53e               .IOPRT   LDA   .A2L       ;SET RAM IN/OUT VECTORS
+   286  6cc7 290f                        AND   #$0F
+   287  6cc9 f006                        BEQ   .IOPRT1
+   288  6ccb 09c0                        ORA   #>.IOADR
+   289  6ccd a000                        LDY   #$00
+   290  6ccf f002                        BEQ   .IOPRT2
+   291  6cd1 a96c               .IOPRT1  LDA   #>COUT1
+   292  6cd3 9400               .IOPRT2  STY   .LOC0,X
+   293  6cd5 9501                        STA   .LOC1,X
+   294  6cd7 60                          RTS
+   295                          
+   296  6cd8 20ae6c             RESET    JSR   .SETNORM   ;SET SCREEN MODE
+   297  6cdb 20666b                      JSR   .INIT      ;  AND INIT KBD/SCREEN
+   298  6cde 20bd6c                      JSR   .SETVID    ;  AS I/O DEV'S
+   299  6ce1 20b36c                      JSR   .SETKBD
+   300  6ce4 d8                          CLD              ;MUST SET HEX MODE!
+   301  6ce5 60                          RTS
+   302                          
+   303                          } ; monitor
+
+; ******** Source: audit.asm
+
+; ******** Source: keyboard.asm
+     1                          ;;; Apple II keyboard and keyboard audit routines
+     2                          ;;; Copyright © 2017 Zellyn Hunter <zellyn@gmail.com>
+     3                          
+     4                          	!zone keyboard {
+     5                          KEYBOARDTESTS
+     6  6ce6 20f485208870       	+print
+     7  85f7 d0d2c5d3d3a0a7d9...	!text "PRESS 'Y', 'N', SPACE, OR ESC",$8D
+     8  8615 00                 	+printed
+     9  6ce9 20ed6c             	jsr YNESCSPACE
+    10  6cec 60                 	rts
+    11                          
+    12                          YNESCSPACE
+    13  6ced ad10c0             	lda KBDSTRB
+    14  6cf0 ad00c0             --	lda KBD
+    15  6cf3 10fb               	bpl --
+    16  6cf5 8d10c0             	sta KBDSTRB
+    17  6cf8 c9a0               	cmp #$a0		; SPACE: bmi/bcc
+    18  6cfa d004               	bne +
+    19  6cfc 18                 	clc
+    20  6cfd a9a0               	lda #$a0
+    21  6cff 60                 	rts
+    22  6d00 c99b               +	cmp #$9B		; ESC: bmi/bcs
+    23  6d02 d004               	bne +
+    24  6d04 38                 	sec
+    25  6d05 a99b               	lda #$9B
+    26  6d07 60                 	rts
+    27  6d08 295f               +	and #$5f		; mask out lowercase
+    28  6d0a c959               	cmp #$59		; 'Y': bpl/bcc
+    29  6d0c d004               	bne +
+    30  6d0e 18                 	clc
+    31  6d0f a959               	lda #$59
+    32  6d11 60                 	rts
+    33  6d12 c94e               +	cmp #$4e		; 'N': bpl/bcs
+    34  6d14 d0da               	bne --
+    35  6d16 38                 	sec
+    36  6d17 a94e               	lda #$4e
+    37  6d19 60                 	rts
+    38                          
+    39                          } ;keyboard
+
+; ******** Source: audit.asm
+
+; ******** Source: video.asm
+     1                          ;;; Apple II video audit routines
+     2                          ;;; Copyright © 2017 Zellyn Hunter <zellyn@gmail.com>
+     3                          
+     4                          	!zone video {
+     5                          VIDEOTESTS
+     6                          
+     7  6d1a 20d26a             	jsr RESETALL
+     8                          
+     9  6d1d 201686208870       	+print
+    10  8619 d6c9c4c5cfa0d4c5...	!text "VIDEO TESTS:",$8D
+    11  8626 d3d0c1c3c5a0d4cf...	!text "SPACE TO SWAP BETWEEN MODES",$8D
+    12  8642 d9afcea0d4cfa0cc...	!text "Y/N TO LOG MODE EQUALITY & MOVE TO NEXT",$8D
+    13  866a c5d3c3a0d4cfa0d3...	!text "ESC TO SKIP TO END",$8D
+    14  867d c8c9d4a0d3d0c1c3...	!text "HIT SPACE TO START",$8D
+    15  8690 00                 	+printed
+    16                          
+    17  6d20 20ed6c             -	jsr YNESCSPACE
+    18  6d23 10fb               	bpl -
+    19  6d25 b0f9               	bcs -
+    20                          
+    21  6d27 20676e             	jsr .first
+    22                          
+    23                          ;;; Main loop over test data. Quit when high addr of text to be printed is $ff.
+    24                          ---
+    25  6d2a 20d26a             	jsr RESETALL
+    26  6d2d 20146c             	jsr HOME
+    27  6d30 207d6e             	jsr .this
+    28  6d33 8d9f70             	sta getch+1
+    29  6d36 20726e             	jsr .next
+    30  6d39 8da070             	sta getch+2
+    31  6d3c c9ff               	cmp #$ff
+    32  6d3e f038               	beq .done
+    33  6d40 209e70             	jsr getch
+    34                          
+    35  6d43 20ed6c             	jsr YNESCSPACE
+    36  6d46 c99b               	cmp #$9B
+    37  6d48 f02e               	beq .done
+    38                          
+    39  6d4a 20726e             	jsr .next
+    40  6d4d 203d6e             	jsr .load400aux
+    41  6d50 20336e             	jsr .load400
+    42                          
+    43  6d53 20576e             	jsr .load2000aux
+    44  6d56 204d6e             	jsr .load2000
+    45                          
+    46  6d59 a200               	ldx #0
+    47                          
+    48                          --	;; Loop back and forth between modes as "space" is pressed.
+    49  6d5b 207f6d             	jsr .setswitches
+    50  6d5e 8a                 	txa
+    51  6d5f 4901               	eor #1
+    52  6d61 aa                 	tax
+    53  6d62 20ed6c             	jsr YNESCSPACE
+    54                          
+    55  6d65 1007               	bpl +
+    56  6d67 c9a0               	cmp #$a0
+    57  6d69 f0f0               	beq --
+    58  6d6b 4c786d             	jmp .done		; ESC
+    59                          
+    60                          +	;; 'Y' or 'N'
+    61                          
+    62  6d6e 20726e             	jsr .next
+    63  6d71 20726e             	jsr .next
+    64  6d74 c9ff               	cmp #$ff
+    65  6d76 d0b2               	bne ---
+    66                          
+    67  6d78 20d26a             .done   jsr RESETALL
+    68  6d7b 20146c             	jsr HOME
+    69  6d7e 60                 	rts
+    70                          
+    71                          .setswitches
+    72  6d7f 207f6e             	jsr .thisx
+    73                          
+    74                          	;; 0: TEXT
+    75  6d82 4a                 	lsr
+    76  6d83 b005               	bcs +
+    77  6d85 8d50c0             	sta RESET_TEXT
+    78  6d88 9003               	bcc ++
+    79  6d8a 8d51c0             +	sta SET_TEXT
+    80                          
+    81                          ++	;; 1: MIXED
+    82  6d8d 4a                 	lsr
+    83  6d8e b005               	bcs +
+    84  6d90 8d52c0             	sta RESET_MIXED
+    85  6d93 9003               	bcc ++
+    86  6d95 8d53c0             +	sta SET_MIXED
+    87                          
+    88                          ++	;; 2: HIRES
+    89  6d98 4a                 	lsr
+    90  6d99 b005               	bcs +
+    91  6d9b 8d56c0             	sta RESET_HIRES
+    92  6d9e 9003               	bcc ++
+    93  6da0 8d57c0             +	sta SET_HIRES
+    94                          
+    95                          ++	;; 3: 80COL
+    96  6da3 4a                 	lsr
+    97  6da4 b005               	bcs +
+    98  6da6 8d0cc0             	sta RESET_80COL
+    99  6da9 9003               	bcc ++
+   100  6dab 8d0dc0             +	sta SET_80COL
+   101                          
+   102                          ++	;; 4: (NOT) AN3
+   103  6dae 4a                 	lsr
+   104  6daf b005               	bcs +
+   105  6db1 8d5fc0             	sta SET_AN3
+   106  6db4 9003               	bcc ++
+   107  6db6 8d5ec0             +	sta RESET_AN3
+   108                          
+   109                          ++	;; 5: ALTCHRSET
+   110  6db9 4a                 	lsr
+   111  6dba b005               	bcs +
+   112  6dbc 8d0ec0             	sta RESET_ALTCHRSET
+   113  6dbf 9003               	bcc ++
+   114  6dc1 8d0fc0             +	sta SET_ALTCHRSET
+   115                          
+   116                          ++	;; 6: PAGE2
+   117  6dc4 4a                 	lsr
+   118  6dc5 b005               	bcs +
+   119  6dc7 8d54c0             	sta RESET_PAGE2
+   120  6dca 9003               	bcc ++
+   121  6dcc 8d55c0             +	sta SET_PAGE2
+   122                          
+   123                          ++	;; 7: 80STORE
+   124  6dcf 4a                 	lsr
+   125  6dd0 b004               	bcs +
+   126  6dd2 8d00c0             	sta RESET_80STORE
+   127  6dd5 60                 	rts
+   128  6dd6 8d01c0             +	sta SET_80STORE
+   129  6dd9 60                 	rts
+   130                          
+   131                          .load
+   132                          	;; A1L/A1H is start addr
+   133                          	;; tmp0 is # pages
+   134                          	;; tmp1 is even
+   135                          	;; tmp2 is odd
+   136                          
+   137                          	;; During loop:
+   138                          	;; PCL/PCH is looper
+   139                          	;; y is index
+   140                          	;; X is # pages
+   141                          
+   142  6dda a53c               	lda A1L
+   143  6ddc 853a               	sta PCL
+   144  6dde a53d               	lda A1H
+   145  6de0 853b               	sta PCH
+   146  6de2 a6f9               	ldx tmp0
+   147  6de4 a5fa               	lda tmp1
+   148  6de6 a000               	ldy #0
+   149                          
+   150  6de8 913a               -	sta (PCL),y
+   151  6dea c8                 	iny
+   152  6deb c8                 	iny
+   153  6dec d0fa               	bne -
+   154  6dee e63b               	inc PCH
+   155  6df0 ca                 	dex
+   156  6df1 d0f5               	bne -
+   157                          
+   158  6df3 a53d               	lda A1H
+   159  6df5 853b               	sta PCH
+   160  6df7 e63a               	inc PCL
+   161  6df9 a6f9               	ldx tmp0
+   162  6dfb a5fb               	lda tmp2
+   163  6dfd a000               	ldy #0
+   164                          
+   165  6dff 913a               -	sta (PCL),y
+   166  6e01 c8                 	iny
+   167  6e02 c8                 	iny
+   168  6e03 d0fa               	bne -
+   169  6e05 e63b               	inc PCH
+   170  6e07 ca                 	dex
+   171  6e08 d0f5               	bne -
+   172                          
+   173  6e0a 60                 	rts
+   174                          
+   175                          ;;; Read next even/odd values and store them for .load in tmp1/tmp2
+   176                          .evenodd
+   177  6e0b 207d6e             	jsr .this
+   178  6e0e 85fa               	sta tmp1
+   179  6e10 20726e             	jsr .next
+   180  6e13 85fb               	sta tmp2
+   181  6e15 20726e             	jsr .next
+   182  6e18 60                 	rts
+   183                          
+   184                          ;;; Setup A1L, A1H, and tmp0 for fill of $400-$7FF
+   185                          .set400
+   186  6e19 a900               	lda #<$400
+   187  6e1b 853c               	sta A1L
+   188  6e1d a904               	lda #>$400
+   189  6e1f 853d               	sta A1H
+   190  6e21 a904               	lda #4
+   191  6e23 85f9               	sta tmp0
+   192  6e25 60                 	rts
+   193                          
+   194                          ;;; Setup A1L, A1H, and tmp0 for fill of $2000-$3fff
+   195                          .set2000
+   196  6e26 a900               	lda #<$2000
+   197  6e28 853c               	sta A1L
+   198  6e2a a920               	lda #>$2000
+   199  6e2c 853d               	sta A1H
+   200  6e2e a920               	lda #$20
+   201  6e30 85f9               	sta tmp0
+   202  6e32 60                 	rts
+   203                          
+   204                          .load400
+   205  6e33 200b6e             	jsr .evenodd
+   206  6e36 20196e             	jsr .set400
+   207  6e39 20da6d             	jsr .load
+   208  6e3c 60                 	rts
+   209                          
+   210                          .load400aux
+   211  6e3d 200b6e             	jsr .evenodd
+   212  6e40 20196e             	jsr .set400
+   213  6e43 8d05c0             	sta SET_RAMWRT
+   214  6e46 20da6d             	jsr .load
+   215  6e49 8d04c0             	sta RESET_RAMWRT
+   216  6e4c 60                 	rts
+   217                          
+   218                          .load2000
+   219  6e4d 200b6e             	jsr .evenodd
+   220  6e50 20266e             	jsr .set2000
+   221  6e53 20da6d             	jsr .load
+   222  6e56 60                 	rts
+   223                          
+   224                          .load2000aux
+   225  6e57 200b6e             	jsr .evenodd
+   226  6e5a 20266e             	jsr .set2000
+   227  6e5d 8d05c0             	sta SET_RAMWRT
+   228  6e60 20da6d             	jsr .load
+   229  6e63 8d04c0             	sta RESET_RAMWRT
+   230  6e66 60                 	rts
+   231                          
+   232                          
+   233                          .first
+   234  6e67 a98b               	lda #<.testdata
+   235  6e69 8d806e             	sta .thisx+1
+   236  6e6c a96e               	lda #>.testdata
+   237  6e6e 8d816e             	sta .thisx+2
+   238  6e71 60                 	rts
+   239                          .next
+   240  6e72 ad8b6e             	lda .testdata
+   241  6e75 ee806e             	inc .thisx+1
+   242  6e78 d003               	bne .this
+   243  6e7a ee816e             	inc .thisx+2
+   244  6e7d a200               .this	ldx #0
+   245  6e7f bd8b6e             .thisx  lda .testdata,x
+   246  6e82 60                 	rts
+   247                          
+   248                          	;; Mode bits:
+   249                          	;; 0: TEXT
+   250                          	;; 1: MIXED
+   251                          	;; 2: HIRES
+   252                          	;; 3: 80COL
+   253                          	;; 4: (NOT) AN3
+   254                          	;; 5: ALTCHRSET
+   255                          	;; 6: PAGE2
+   256                          	;; 7: 80STORE
+   257                          	.md_text      = $01
+   258                          	.md_mixed     = $02
+   259                          	.md_hires     = $04
+   260                          	.md_80col     = $08
+   261                          	.md_an3off    = $10
+   262                          	.md_altchrset = $20
+   263                          	.md_page2     = $40
+   264                          	.md_80store   = $80
+   265                          
+   266  6e83 c6cfcfc2c1d28d00   foo	!text "FOOBAR",$8D,$0
+   267                          
+   268                          .testdata
+   269                          	;; Aux lores even/odd, lores even/odd, aux hires even/odd, hires even/odd, mode 1, mode 2
+   270                          
+   271                          	!ifndef SKIP {
+   272                          	;; 40COL and 80COL Text, inverse space.
+   273  6e8b 9186               	+string
+   274  8691 b4b0adc3cfcca0c1...	!text "40-COL AND 80-COL TEXT INVERSE SPACES:",$8D
+   275  86b8 c1cccca0d7c8c9d4...	!text "ALL WHITE, WITH 1/80 SHIFT LEFT"
+   276  86d7 00                 	+stringed
+   277  6e8d 2020202000000000...	!byte $20, $20, $20, $20, 0, 0, 0, 0, .md_text, .md_text | .md_80col
+   278                          
+   279                          	;; LORES patterns that correspond to HIRES patterns.
+   280  6e97 d886               	+string
+   281  86d8 cccfd2c5d3a0d6c9...	!text "LORES VIOLET, HIRES VIOLET:SAME"
+   282  86f7 00                 	+stringed
+   283  6e99 000033330000552a...	!byte 0, 0, $33, $33, 0, 0, $55, $2a, 0, .md_hires ; purple
+   284  6ea3 f886               	+string
+   285  86f8 cccfd2c5d3a0c7d2...	!text "LORES GREEN, HIRES GREEN:SAME"
+   286  8715 00                 	+stringed
+   287  6ea5 0000cccc00002a55...	!byte 0, 0, $cc, $cc, 0, 0, $2a, $55, 0, .md_hires ; green
+   288  6eaf 1687               	+string
+   289  8716 cccfd2c5d3a0ccc9...	!text "LORES LIGHT BLUE, HIRES LIGHT BLUE:SAME"
+   290  873d 00                 	+stringed
+   291  6eb1 000066660000d5aa...	!byte 0, 0, $66, $66, 0, 0, $d5, $aa, 0, .md_hires ; light blue
+   292  6ebb 3e87               	+string
+   293  873e cccfd2c5d3a0cfd2...	!text "LORES ORANGE, HIRES ORANGE:LEFT",$8D
+   294  875e c5c4c7c5a0d3c8c9...	!text "EDGE SHIFTS RIGHT A COUPLE OF PIXELS"
+   295  8782 00                 	+stringed
+   296  6ebd 000099990000aad5...	!byte 0, 0, $99, $99, 0, 0, $aa, $d5, 0, .md_hires ; orange - left column should budge
+   297                          
+   298                          	;; LORES patterns and corresponding DBL HIRES patterns.
+   299  6ec7 8387               	+string
+   300  8783 cccfd2c5d3a0c1ce...	!text "LORES AND DBL HIRES DARK MAGENTA:SHIFT",$8D
+   301  87aa ccc5c6d4           	!text "LEFT"
+   302  87ae 00                 	+stringed
+   303  6ec9 0000111188221144...	!byte 0, 0, $11, $11, $88, $22, $11, $44, 0, .md_hires | .md_80col | .md_an3off
+   304  6ed3 af87               	+string
+   305  87af cccfd2c5d3a0c1ce...	!text "LORES AND DBL HIRES DARK BLUE:SHIFT LEFT"
+   306  87d7 00                 	+stringed
+   307  6ed5 0000222211442288...	!byte 0, 0, $22, $22, $11, $44, $22, $88, 0, .md_hires | .md_80col | .md_an3off
+   308  6edf d887               	+string
+   309  87d8 cccfd2c5d3a0c1ce...	!text "LORES AND DBL HIRES VIOLET:SHIFT LEFT"
+   310  87fd 00                 	+stringed
+   311  6ee1 00003333996633cc...	!byte 0, 0, $33, $33, $99, $66, $33, $cc, 0, .md_hires | .md_80col | .md_an3off
+   312  6eeb fe87               	+string
+   313  87fe cccfd2c5d3a0c1ce...	!text "LORES AND DBL HIRES DARK BLUEGREEN:",$8D
+   314  8822 d3c8c9c6d4a0ccc5...	!text "SHIFT LEFT"
+   315  882c 00                 	+stringed
+   316  6eed 0000444422884411...	!byte 0, 0, $44, $44, $22, $88, $44, $11, 0, .md_hires | .md_80col | .md_an3off
+   317  6ef7 2d88               	+string
+   318  882d cccfd2c5d3a0c1ce...	!text "LORES AND DBL HIRES GRAY $5:",$8D
+   319  884a d3c8c9c6d4a0ccc5...	!text "SHIFT LEFT"
+   320  8854 00                 	+stringed
+   321  6ef9 00005555aaaa5555...	!byte 0, 0, $55, $55, $aa, $aa, $55, $55, 0, .md_hires | .md_80col | .md_an3off
+   322  6f03 5588               	+string
+   323  8855 cccfd2c5d3a0c1ce...	!text "LORES AND DBL HIRES BLUE:",$8D
+   324  886f d3c8c9c6d4a0ccc5...	!text "SHIFT LEFT"
+   325  8879 00                 	+stringed
+   326  6f05 0000666633cc6699...	!byte 0, 0, $66, $66, $33, $cc, $66, $99, 0, .md_hires | .md_80col | .md_an3off
+   327  6f0f 7a88               	+string
+   328  887a cccfd2c5d3a0c1ce...	!text "LORES AND DBL HIRES LIGHT BLUE:",$8D
+   329  889a d3c8c9c6d4a0ccc5...	!text "SHIFT LEFT"
+   330  88a4 00                 	+stringed
+   331  6f11 00007777bbee77dd...	!byte 0, 0, $77, $77, $bb, $ee, $77, $dd, 0, .md_hires | .md_80col | .md_an3off
+   332  6f1b a588               	+string
+   333  88a5 cccfd2c5d3a0c1ce...	!text "LORES AND DBL HIRES DARK BROWN:",$8D
+   334  88c5 d3c8c9c6d4a0ccc5...	!text "SHIFT LEFT"
+   335  88cf 00                 	+stringed
+   336  6f1d 0000888844118822...	!byte 0, 0, $88, $88, $44, $11, $88, $22, 0, .md_hires | .md_80col | .md_an3off
+   337  6f27 d088               	+string
+   338  88d0 cccfd2c5d3a0c1ce...	!text "LORES AND DBL HIRES ORANGE:",$8D
+   339  88ec d3c8c9c6d4a0ccc5...	!text "SHIFT LEFT"
+   340  88f6 00                 	+stringed
+   341  6f29 00009999cc339966...	!byte 0, 0, $99, $99, $cc, $33, $99, $66, 0, .md_hires | .md_80col | .md_an3off
+   342  6f33 f788               	+string
+   343  88f7 cccfd2c5d3a0c1ce...	!text "LORES AND DBL HIRES GRAY $A:",$8D
+   344  8914 d3c8c9c6d4a0ccc5...	!text "SHIFT LEFT"
+   345  891e 00                 	+stringed
+   346  6f35 0000aaaa5555aaaa...	!byte 0, 0, $aa, $aa, $55, $55, $aa, $aa, 0, .md_hires | .md_80col | .md_an3off
+   347  6f3f 1f89               	+string
+   348  891f cccfd2c5d3a0c1ce...	!text "LORES AND DBL HIRES LIGHT MAGENTA:",$8D
+   349  8942 d3c8c9c6d4a0ccc5...	!text "SHIFT LEFT"
+   350  894c 00                 	+stringed
+   351  6f41 0000bbbbdd77bbee...	!byte 0, 0, $bb, $bb, $dd, $77, $bb, $ee, 0, .md_hires | .md_80col | .md_an3off
+   352  6f4b 4d89               	+string
+   353  894d cccfd2c5d3a0c1ce...	!text "LORES AND DBL HIRES GREEN:",$8D
+   354  8968 d3c8c9c6d4a0ccc5...	!text "SHIFT LEFT"
+   355  8972 00                 	+stringed
+   356  6f4d 0000cccc6699cc33...	!byte 0, 0, $cc, $cc, $66, $99, $cc, $33, 0, .md_hires | .md_80col | .md_an3off
+   357  6f57 7389               	+string
+   358  8973 cccfd2c5d3a0c1ce...	!text "LORES AND DBL HIRES LIGHT BROWN:",$8D
+   359  8994 d3c8c9c6d4a0ccc5...	!text "SHIFT LEFT"
+   360  899e 00                 	+stringed
+   361  6f59 0000ddddeebbdd77...	!byte 0, 0, $dd, $dd, $ee, $bb, $dd, $77, 0, .md_hires | .md_80col | .md_an3off
+   362  6f63 9f89               	+string
+   363  899f cccfd2c5d3a0c1ce...	!text "LORES AND DBL HIRES LIGHT BLUEGREEN:",$8D
+   364  89c4 d3c8c9c6d4a0ccc5...	!text "SHIFT LEFT"
+   365  89ce 00                 	+stringed
+   366  6f65 0000eeee77ddeebb...	!byte 0, 0, $ee, $ee, $77, $dd, $ee, $bb, 0, .md_hires | .md_80col | .md_an3off
+   367                          
+   368                          	;; DBL LORES patterns and corresponding DBL HIRES patterns.
+   369  6f6f cf89               	+string
+   370  89cf c4c2cca0cccfd2c5...	!text "DBL LORES AND DBL HIRES DARK MAGENTA:",$8D
+   371  89f5 d3c1cdc5           	!text "SAME"
+   372  89f9 00                 	+stringed
+   373  6f71 8888111188221144...	!byte $88, $88, $11, $11, $88, $22, $11, $44, .md_80col | .md_an3off, .md_hires | .md_80col | .md_an3off
+   374  6f7b fa89               	+string
+   375  89fa c4c2cca0cccfd2c5...	!text "DBL LORES AND DBL HIRES DARK BLUE:SAME"
+   376  8a20 00                 	+stringed
+   377  6f7d 1111222211442288...	!byte $11, $11, $22, $22, $11, $44, $22, $88, .md_80col | .md_an3off, .md_hires | .md_80col | .md_an3off
+   378  6f87 218a               	+string
+   379  8a21 c4c2cca0cccfd2c5...	!text "DBL LORES AND DBL HIRES VIOLET:SAME"
+   380  8a44 00                 	+stringed
+   381  6f89 99993333996633cc...	!byte $99, $99, $33, $33, $99, $66, $33, $cc, .md_80col | .md_an3off, .md_hires | .md_80col | .md_an3off
+   382  6f93 458a               	+string
+   383  8a45 c4c2cca0cccfd2c5...	!text "DBL LORES AND DBL HIRES DARK BLUEGREEN:",$8D
+   384  8a6d d3c1cdc5           	!text "SAME"
+   385  8a71 00                 	+stringed
+   386  6f95 2222444422884411...	!byte $22, $22, $44, $44, $22, $88, $44, $11, .md_80col | .md_an3off, .md_hires | .md_80col | .md_an3off
+   387  6f9f 728a               	+string
+   388  8a72 c4c2cca0cccfd2c5...	!text "DBL LORES AND DBL HIRES GRAY $5:SAME"
+   389  8a96 00                 	+stringed
+   390  6fa1 aaaa5555aaaa5555...	!byte $aa, $aa, $55, $55, $aa, $aa, $55, $55, .md_80col | .md_an3off, .md_hires | .md_80col | .md_an3off
+   391  6fab 978a               	+string
+   392  8a97 c4c2cca0cccfd2c5...	!text "DBL LORES AND DBL HIRES BLUE:SAME"
+   393  8ab8 00                 	+stringed
+   394  6fad 3333666633cc6699...	!byte $33, $33, $66, $66, $33, $cc, $66, $99, .md_80col | .md_an3off, .md_hires | .md_80col | .md_an3off
+   395  6fb7 b98a               	+string
+   396  8ab9 c4c2cca0cccfd2c5...	!text "DBL LORES AND DBL HIRES LIGHT BLUE:SAME"
+   397  8ae0 00                 	+stringed
+   398  6fb9 bbbb7777bbee77dd...	!byte $bb, $bb, $77, $77, $bb, $ee, $77, $dd, .md_80col | .md_an3off, .md_hires | .md_80col | .md_an3off
+   399  6fc3 e18a               	+string
+   400  8ae1 c4c2cca0cccfd2c5...	!text "DBL LORES AND DBL HIRES DARK BROWN:SAME"
+   401  8b08 00                 	+stringed
+   402  6fc5 4444888844118822...	!byte $44, $44, $88, $88, $44, $11, $88, $22, .md_80col | .md_an3off, .md_hires | .md_80col | .md_an3off
+   403  6fcf 098b               	+string
+   404  8b09 c4c2cca0cccfd2c5...	!text "DBL LORES AND DBL HIRES ORANGE:SAME"
+   405  8b2c 00                 	+stringed
+   406  6fd1 cccc9999cc339966...	!byte $cc, $cc, $99, $99, $cc, $33, $99, $66, .md_80col | .md_an3off, .md_hires | .md_80col | .md_an3off
+   407  6fdb 2d8b               	+string
+   408  8b2d c4c2cca0cccfd2c5...	!text "DBL LORES AND DBL HIRES GRAY $A:SAME"
+   409  8b51 00                 	+stringed
+   410  6fdd 5555aaaa5555aaaa...	!byte $55, $55, $aa, $aa, $55, $55, $aa, $aa, .md_80col | .md_an3off, .md_hires | .md_80col | .md_an3off
+   411  6fe7 528b               	+string
+   412  8b52 c4c2cca0cccfd2c5...	!text "DBL LORES AND DBL HIRES LIGHT MAGENTA:",$8D
+   413  8b79 d3c1cdc5           	!text "SAME"
+   414  8b7d 00                 	+stringed
+   415  6fe9 ddddbbbbdd77bbee...	!byte $dd, $dd, $bb, $bb, $dd, $77, $bb, $ee, .md_80col | .md_an3off, .md_hires | .md_80col | .md_an3off
+   416  6ff3 7e8b               	+string
+   417  8b7e c4c2cca0cccfd2c5...	!text "DBL LORES AND DBL HIRES GREEN:SAME"
+   418  8ba0 00                 	+stringed
+   419  6ff5 6666cccc6699cc33...	!byte $66, $66, $cc, $cc, $66, $99, $cc, $33, .md_80col | .md_an3off, .md_hires | .md_80col | .md_an3off
+   420  6fff a18b               	+string
+   421  8ba1 c4c2cca0cccfd2c5...	!text "DBL LORES AND DBL HIRES LIGHT BROWN:SAME"
+   422  8bc9 00                 	+stringed
+   423  7001 eeeeddddeebbdd77...	!byte $ee, $ee, $dd, $dd, $ee, $bb, $dd, $77, .md_80col | .md_an3off, .md_hires | .md_80col | .md_an3off
+   424  700b ca8b               	+string
+   425  8bca c4c2cca0cccfd2c5...	!text "DBL LORES AND DBL HIRES LIGHT BLUEGREEN:",$8D
+   426  8bf3 d3c1cdc5           	!text "SAME"
+   427  8bf7 00                 	+stringed
+   428  700d 7777eeee77ddeebb...	!byte $77, $77, $ee, $ee, $77, $dd, $ee, $bb, .md_80col | .md_an3off, .md_hires | .md_80col | .md_an3off
+   429                          
+   430                          	} ; ifndef SKIP
+   431                          
+   432                          	;; Tests that LORES stays the same in 80COL mode if AN3 is on.
+   433                          	;; OpenEmulator bug: https://github.com/OpenEmulatorProject/libemulation/issues/24
+   434                          
+   435  7017 f88b               	+string
+   436  8bf8 ccc9c7c8d4a0c2d2...	!text "LIGHT BROWN:LORES VS 80-COL+AN3 ON.",$8D,$8D
+   437  8c1d d3c8cfd5ccc4a0d3...	!text "SHOULD STAY IN 40-COL GRAPHICS MODE AND",$8D
+   438  8c45 aacecfd4aaa0d3c8...	!text "*NOT* SHOW BLACK VERTICAL STRIPES OF",$8D
+   439  8c6a b8b0adc3cfcca0c1...	!text "80-COL AUXMEM."
+   440  8c78 00                 	+stringed
+   441  7019 0000dddd00000000...	!byte 0, 0, $dd, $dd, $0, $0, $0, $0, 0, .md_80col
+   442                          
+   443  7023 798c               	+string
+   444  8c79 ccc9c7c8d4a0cdc1...	!text "LIGHT MAGENTA:LORES VS 80-COL+AN3 ON,",$8D
+   445  8c9f cdc9d8c5c4a0c7d2...	!text "MIXED GRAPHICS AND TEXT",$8D
+   446  8cb7 c7d2c1d0c8c9c3d3...	!text "GRAPHICS PART SHOULD STAY IN 40-COL",$8D
+   447  8cdb c7d2c1d0c8c9c3d3...	!text "GRAPHICS MODE AND *NOT* SHOW VERTICAL",$8D
+   448  8d01 d3d4d2c9d0c5d3a0...	!text "STRIPES OF 80-COL AUXMEM.",$8D,$8D
+   449  8d1c c2cfd4d4cfcda0c6...	!text "BOTTOM FOUR ROWS SHOULD START OUT AS",$8D
+   450  8d41 d3c5cdc9adc3cfcc...	!text "SEMI-COLONS (;;;) AND SWITCH TO 80-COL",$8D
+   451  8d68 c1d3d4c5d2c9d3cb...	!text "ASTERISKS AND SEMI-COLONS (*;*;*;)"
+   452  8d8a 00                 	+stringed
+   453  7025 aaaabbbb00000000...	!byte $aa, $aa, $bb, $bb, $0, $0, $0, $0, .md_mixed, .md_mixed | .md_80col
+   454                          
+   455                          	;; Tests that HIRES stays the same in 80COL mode if AN3 is on.
+   456                          
+   457  702f 8b8d               	+string
+   458  8d8b ccc9c7c8d4a0c2cc...	!text "LIGHT BLUE:HIRES VS 80-COL+AN3 ON.",$8D,$8D
+   459  8daf d3c8cfd5ccc4a0d3...	!text "SHOULD STAY IN 40-COL GRAPHICS MODE AND",$8D
+   460  8dd7 aacecfd4aaa0d3c8...	!text "*NOT* SHOW BLACK VERTICAL STRIPES OF",$8D
+   461  8dfc b8b0adc3cfcca0c1...	!text "80-COL AUXMEM."
+   462  8e0a 00                 	+stringed
+   463  7031 000000000000d5aa...	!byte 0, 0, 0, 0, 0, 0, $d5, $aa, .md_hires, .md_hires | .md_80col
+   464                          
+   465  703b 0b8e               	+string
+   466  8e0b ccc9c7c8d4a0c2cc...	!text "LIGHT BLUE:HIRES VS 80-COL+AN3 ON,",$8D
+   467  8e2e cdc9d8c5c4a0c7d2...	!text "MIXED GRAPHICS AND TEXT",$8D
+   468  8e46 c7d2c1d0c8c9c3d3...	!text "GRAPHICS PART SHOULD STAY IN 40-COL",$8D
+   469  8e6a c7d2c1d0c8c9c3d3...	!text "GRAPHICS MODE AND *NOT* SHOW VERTICAL",$8D
+   470  8e90 d3d4d2c9d0c5d3a0...	!text "STRIPES OF 80-COL AUXMEM.",$8D,$8D
+   471  8eab c2cfd4d4cfcda0c6...	!text "BOTTOM FOUR ROWS SHOULD START OUT AS",$8D
+   472  8ed0 d3c5cdc9adc3cfcc...	!text "SEMI-COLONS (;;;) AND SWITCH TO 80-COL",$8D
+   473  8ef7 c1d3d4c5d2c9d3cb...	!text "ASTERISKS AND SEMI-COLONS (*;*;*;)"
+   474  8f19 00                 	+stringed
+   475  703d aaaabbbb0000d5aa...	!byte $aa, $aa, $bb, $bb, 0, 0, $d5, $aa, .md_hires | .md_mixed, .md_hires | .md_mixed | .md_80col
+   476                          
+   477  7047 ffff               	!byte $ff, $ff
+   478                          
+   479                          } ;video
+   480                          
+
+; ******** Source: audit.asm
+
+; ******** Source: printtest.asm
+     1                          ;;; Helper routines for printing out sequences of test code.
+     2                          ;;; Copyright © 2017 Zellyn Hunter <zellyn@gmail.com>
+     3                          
+     4                          
+     5                          !zone printtest {
+     6                          	.checkdata = tmp1
+     7                          
+     8                          PRINTTEST
+     9                          -
+    10  7049 a000               	ldy #0
+    11  704b b13a               	lda (PCL),y
+    12  704d c920               	cmp #$20
+    13  704f f025               	beq +++
+    14  7051 a9ad               	lda #'-'
+    15  7053 209b6c             	jsr COUT
+    16  7056 a9a0               	lda #' '
+    17  7058 209b6c             	jsr COUT
+    18  705b a200               	ldx #0
+    19  705d a13a               	lda (PCL,x)
+    20  705f 208ef8             	jsr $f88e
+    21  7062 a203               	ldx #3
+    22  7064 20eaf8             	jsr $f8ea
+    23  7067 2053f9             	jsr $f953
+    24  706a 853a               	sta PCL
+    25  706c 843b               	sty PCH
+    26  706e a98d               	lda #$8D
+    27  7070 209b6c             	jsr COUT
+    28  7073 4c4970             	jmp -
+    29  7076 60                 +++	rts
+    30                          
+    31                          ;;; Increment .checkdata pointer to the next memory location, and load
+    32                          ;;; it into the accumulator. X and Y are preserved.
+    33                          NEXTCHECK
+    34  7077 e6fa               	inc .checkdata
+    35  7079 d002               	bne CURCHECK
+    36  707b e6fb               	inc .checkdata+1
+    37                          CURCHECK
+    38  707d 8401               	sty SCRATCH
+    39  707f a000               	ldy #0
+    40  7081 b1fa               	lda (.checkdata),y
+    41  7083 a401               	ldy SCRATCH
+    42  7085 0900               	ora #0
+    43  7087 60                 	rts
+    44                          
+    45                          } ;printtest
+
+; ******** Source: audit.asm
+   197                          	;!src "shasumtests.asm"
+   198                          
+   199                          print
+   200  7088 ad81c0             	lda $C081
+   201  708b ad81c0             	lda $C081
+   202  708e 68                 	pla
+   203  708f 8d9f70             	sta getch+1
+   204  7092 68                 	pla
+   205  7093 8da070             	sta getch+2
+   206  7096 ee9f70             -	inc getch+1
+   207  7099 d003               	bne getch
+   208  709b eea070             	inc getch+2
+   209  709e adedfe             getch	lda $FEED		; FEED gets modified
+   210  70a1 f006               	beq +
+   211  70a3 209b6c             	jsr COUT
+   212  70a6 4c9670             	jmp -
+   213  70a9 60                 +	rts
+   214                          
+   215                          ;;; Print a string of bytes, as hex.
+   216                          ;;; Address in SRC, count in A.
+   217                          ;;; Burns A,Y.
+   218                          prbytes:
+   219  70aa a000               	ldy #0
+   220  70ac 48                 -	pha
+   221  70ad b106               	lda (SRC),y
+   222  70af 20886c             	jsr PRBYTE
+   223  70b2 c8                 	iny
+   224  70b3 68                 	pla
+   225  70b4 69ff               	adc #$ff
+   226  70b6 d0f4               	bne -
+   227  70b8 60                 	rts
+   228                          
+   229                          
+   230                          errora
+   231  70b9 48                 	pha
+   232  70ba ad82c0             	lda $C082
+   233  70bd a9c1               	lda #'A'
+   234  70bf 209b6c             	jsr COUT
+   235  70c2 a9ba               	lda #':'
+   236  70c4 209b6c             	jsr COUT
+   237  70c7 68                 	pla
+   238  70c8 20886c             	jsr PRBYTE
+   239  70cb 20846c             	jsr CROUT
+   240                          error
+   241  70ce ad82c0             	lda $C082
+   242  70d1 68                 	pla
+   243  70d2 8de270             	sta getche+1
+   244  70d5 68                 	pla
+   245  70d6 8de370             	sta getche+2
+   246  70d9 eee270             -	inc getche+1
+   247  70dc d003               	bne getche
+   248  70de eee370             	inc getche+2
+   249  70e1 adedfe             getche	lda $FEED		; FEED gets modified
+   250  70e4 f006               	beq +
+   251  70e6 209b6c             	jsr COUT
+   252  70e9 4cd970             	jmp -
+   253                          +
+   254  70ec 201a8f208870       	+print
+   255  8f1d dac5ccccd9ceaec3...	!text "ZELLYN.COM/A2AUDIT/V0#E",0
+   256  8f35 00                 	+printed
+   257  70ef 205e6b             	jsr PRNTYX
+   258  70f2 a98d               	lda #$8D
+   259  70f4 209b6c             	jsr COUT
+   260  70f7 60                 rts
+
+; ******** Source: technote2.asm
+     1                          ;;; From http://www.1000bit.it/support/manuali/apple/technotes/misc/tn.misc.02.html
+     2                          ;;; *********************************************
+     3                          ;;; *                                           *
+     4                          ;;; *  Apple II Family Identification Program   *
+     5                          ;;; *                                           *
+     6                          ;;; *               Version 2.2                 *
+     7                          ;;; *                                           *
+     8                          ;;; *               March, 1990                 *
+     9                          ;;; *                                           *
+    10                          ;;; *  Includes support for the Apple IIe Card  *
+    11                          ;;; *  for the Macintosh LC.                    *
+    12                          ;;; *                                           *
+    13                          ;;; *********************************************
+    14                          
+    15                          ;  First, some global equates for the routine:
+    16                          
+    17                          	!zone technote2 {
+    18                          
+    19                          IIplain    = $01           ;Apple II
+    20                          IIplus     = $02           ;Apple II+
+    21                          IIIem      = $03           ;Apple /// in emulation mode
+    22                          IIe        = $04           ;Apple IIe
+    23                          IIc        = $05           ;Apple IIc
+    24                          IIeCard    = $06           ;Apple IIe Card for the Macintosh LC
+    25                          
+    26                          .safe       = $0001        ;start of code relocated to zp
+    27                          .location   = $06          ;zero page location to use
+    28                          
+    29                          .test1      = $AA          ;test byte #1
+    30                          .test2      = $55          ;lsr of test1
+    31                          .test3      = $88          ;test byte #3
+    32                          .test4      = $EE          ;test byte #4
+    33                          
+    34                          .begpage1   = $400         ;beginning of text page 1
+    35                          .begpage2   = $800         ;beginning of text page 2
+    36                          .begsprse   = $C00         ;byte after text page 2
+    37                          
+    38                          .clr80col   = $C000        ;disable 80-column store
+    39                          .set80col   = $C001        ;enable 80-column store
+    40                          .rdmainram  = $C002        ;read main ram
+    41                          .rdcardram  = $C003        ;read aux ram
+    42                          .wrmainram  = $C004        ;write main ram
+    43                          .wrcardram  = $C005        ;write aux ram
+    44                          .rdramrd    = $C013        ;are we reading aux ram?
+    45                          .rdaltzp    = $C016        ;are we reading aux zero page?
+    46                          .rd80col    = $C018        ;are we using 80-columns?
+    47                          .rdtext     = $C01A        ;read if text is displayed
+    48                          .rdpage2    = $C01C        ;read if page 2 is displayed
+    49                          .txtclr     = $C050        ;switch in graphics
+    50                          .txtset     = $C051        ;switch in text
+    51                          .txtpage1   = $C054        ;switch in page 1
+    52                          .txtpage2   = $C055        ;switch in page 2
+    53                          .ramin      = $C080        ;read LC bank 2, write protected
+    54                          .romin      = $C081        ;read ROM, 2 reads write enable LC
+    55                          .lcbank1    = $C08B        ;LC bank 1 enable
+    56                          
+    57                          .lc1        = $E000        ;bytes to save for LC
+    58                          .lc2        = $D000        ;save/restore routine
+    59                          .lc3        = $D400
+    60                          .lc4        = $D800
+    61                          
+    62                          .idroutine  = $FE1F        ;IIgs id routine
+    63                          
+    64                          ;  Start by saving the state of the language card banks and
+    65                          ;  by switching in main ROM.
+    66                          
+    67                          IDENTIFY
+    68  70f8 08                 	php               ;save the processor state
+    69  70f9 78                 	sei               ;before disabling interrupts
+    70  70fa ad00e0             	lda .lc1          ;save four bytes from
+    71  70fd 8ded72             	sta .save         ;ROM/RAM area for later
+    72  7100 ad00d0             	lda .lc2          ;restoring of RAM/ROM
+    73  7103 8dee72             	sta .save+1       ;to original condition
+    74  7106 ad00d4             	lda .lc3
+    75  7109 8def72             	sta .save+2
+    76  710c ad00d8             	lda .lc4
+    77  710f 8df072             	sta .save+3
+    78  7112 ad81c0             	lda $C081         ;read ROM
+    79  7115 ad81c0             	lda $C081
+    80  7118 a900               	lda #0            ;start by assuming unknown machine
+    81  711a 8de472             	sta MACHINE
+    82  711d 8de572             	sta ROMLEVEL
+    83                          .IdStart
+    84  7120 a506               	lda .location     ;save zero page locations
+    85  7122 8df172             	sta .save+4       ;for later restoration
+    86  7125 a507               	lda .location+1
+    87  7127 8df272             	sta .save+5
+    88  712a a9fb               	lda #$FB          ;all ID bytes are in page $FB
+    89  712c 8507               	sta .location+1   ;save in zero page as high byte
+    90  712e a200               	ldx #0            ;init pointer to start of ID table
+    91  7130 bdf372             .loop	lda .IDTable,x    ;get the machine we are testing for
+    92  7133 8de472             	sta MACHINE       ;and save it
+    93  7136 bdf472             	lda .IDTable+1,x  ;get the ROM level we are testing for
+    94  7139 8de572             	sta ROMLEVEL      ;and save it
+    95  713c 0de472             	ora MACHINE       ;are both zero?
+    96  713f f01c               	beq .matched      ;yes - at end of list - leave
+    97                          
+    98  7141 e8                 .loop2	inx               ;bump index to loc/byte pair to test
+    99  7142 e8                 	inx
+   100  7143 bdf372             	lda .IDTable,x    ;get the byte that should be in ROM
+   101  7146 f015               	beq .matched      ;if zero, we're at end of list
+   102  7148 8506               	sta .location     ;save in zero page
+   103                          
+   104  714a a000               	ldy #0            ;init index for indirect addressing
+   105  714c bdf472             	lda .IDTable+1,x  ;get the byte that should be in ROM
+   106  714f d106               	cmp (.location),y ;is it there?
+   107  7151 f0ee               	beq .loop2        ;yes, so keep on looping
+   108                          
+   109  7153 e8                 .loop3	inx               ;we didn't match. Scoot to the end of the
+   110  7154 e8                 	inx               ;line in the ID table so we can start
+   111  7155 bdf372             	lda .IDTable,x    ;checking for another machine
+   112  7158 d0f9               	bne .loop3
+   113  715a e8                 	inx               ;point to start of next line
+   114  715b d0d3               	bne .loop         ;should always be taken
+   115                          
+   116                          .matched	; anop
+   117                          
+   118                          ;  Here we check the 16-bit ID routine at idroutine ($FE1F).  If it
+   119                          ;  returns with carry clear, we call it again in 16-bit
+   120                          ;  mode to provide more information on the machine.
+   121                          
+   122                          	!cpu 65816 {
+   123                          .idIIgs
+   124  715d 38                 	sec               ;set the carry bit
+   125  715e 201ffe             	jsr .idroutine    ;Apple IIgs ID Routine
+   126  7161 9003               	bcc .idIIgs2      ;it's a IIgs or equivalent
+   127  7163 4c9a71             	jmp .IIgsOut      ;nope, go check memory
+   128                          .idIIgs2
+   129  7166 ade472             	lda MACHINE       ;get the value for machine
+   130  7169 0980               	ora #$80          ;and set the high bit
+   131  716b 8de472             	sta MACHINE       ;put it back
+   132  716e 18                 	clc               ;get ready to switch into native mode
+   133  716f fb                 	xce
+   134  7170 08                 	php               ;save the processor status
+   135  7171 c230               	rep #$30          ;sets 16-bit registers
+   136                          	!al {             ;longa on
+   137                          	!rl {             ;longi on
+   138  7173 201ffe             	jsr .idroutine    ;call the ID routine again
+   139  7176 8de772             	sta .IIgsA        ;16-bit store!
+   140  7179 8ee972             	stx .IIgsX        ;16-bit store!
+   141  717c 8ceb72             	sty .IIgsY        ;16-bit store!
+   142  717f 28                 	plp               ;restores 8-bit registers
+   143  7180 fb                 	xce               ;switches back to whatever it was before
+   144                          	}                 ;longi off
+   145                          	}                 ;longa off
+   146                          
+   147  7181 aceb72             	ldy .IIgsY        ;get the ROM vers number (starts at 0)
+   148  7184 c002               	cpy #$02          ;is it ROM 01 or 00?
+   149  7186 b001               	bcs .idIIgs3      ;if not, don't increment
+   150  7188 c8                 	iny               ;bump it up for romlevel
+   151                          .idIIgs3
+   152  7189 8ce572             	sty ROMLEVEL      ;and put it there
+   153  718c c001               	cpy #$01          ;is it the first ROM?
+   154  718e d00a               	bne .IIgsOut      ;no, go on with things
+   155  7190 adec72             	lda .IIgsY+1      ;check the other byte too
+   156  7193 d005               	bne .IIgsOut      ;nope, it's a IIgs successor
+   157  7195 a97f               	lda #$7F          ;fix faulty ROM 00 on the IIgs
+   158  7197 8de772             	sta .IIgsA
+   159                          .IIgsOut	; anop
+   160                          }
+   161                          
+   162                          ;;; ******************************************
+   163                          ;;; * This part of the code checks for the   *
+   164                          ;;; * memory configuration of the machine.   *
+   165                          ;;; * If it's a IIgs, we've already stored   *
+   166                          ;;; * the total memory from above.  If it's  *
+   167                          ;;; * a IIc or a IIe Card, we know it's      *
+   168                          ;;; * 128K; if it's a ][+, we know it's at   *
+   169                          ;;; * least 48K and maybe 64K.  We won't     *
+   170                          ;;; * check for less than 48K, since that's  *
+   171                          ;;; * a really rare circumstance.            *
+   172                          ;;; ******************************************
+   173                          
+   174  719a ade472             .exit	lda MACHINE       ;get the machine kind
+   175  719d 3018               	bmi .exit128      ;it's a 16-bit machine (has 128K)
+   176  719f c905               	cmp #IIc          ;is it a IIc?
+   177  71a1 f014               	beq .exit128      ;yup, it's got 128K
+   178  71a3 c906               	cmp #IIeCard      ;is it a IIe Card?
+   179  71a5 f010               	beq .exit128      ;yes, it's got 128K
+   180  71a7 c904               	cmp #IIe          ;is it a IIe?
+   181  71a9 d003               	bne .contexit     ;yes, go muck with aux memory
+   182  71ab 4c4a72             	jmp .muckaux
+   183                          .contexit
+   184  71ae c903               	cmp #IIIem        ;is it a /// in emulation?
+   185  71b0 d06e               	bne .exitII       ;nope, it's a ][ or ][+
+   186  71b2 a930               	lda #48           ;/// emulation has 48K
+   187  71b4 4cb971             	jmp .exita
+   188                          .exit128
+   189  71b7 a980               	lda #128          ;128K
+   190  71b9 8de672             .exita	sta MEMORY
+   191  71bc ad00e0             .exit1	lda .lc1          ;time to restore the LC
+   192  71bf cded72             	cmp .save         ;if all 4 bytes are the same
+   193  71c2 d018               	bne .exit2        ;then LC was never on so
+   194  71c4 ad00d0             	lda .lc2          ;do nothing
+   195  71c7 cdee72             	cmp .save+1
+   196  71ca d010               	bne .exit2
+   197  71cc ad00d4             	lda .lc3
+   198  71cf cdef72             	cmp .save+2
+   199  71d2 d008               	bne .exit2
+   200  71d4 ad00d8             	lda .lc4
+   201  71d7 cdf072             	cmp .save+3
+   202  71da f038               	beq .exit6
+   203  71dc ad88c0             .exit2	lda $C088         ;no match! so turn first LC
+   204  71df ad00e0             	lda .lc1          ;bank on and check
+   205  71e2 cded72             	cmp .save
+   206  71e5 f006               	beq .exit3
+   207  71e7 ad80c0             	lda $C080
+   208  71ea 4c1472             	jmp .exit6
+   209  71ed ad00d0             .exit3	lda .lc2
+   210  71f0 cdee72             	cmp .save+1       ;if all locations check
+   211  71f3 f006               	beq .exit4        ;then do more more else
+   212  71f5 ad80c0             	lda $C080         ;turn on bank 2
+   213  71f8 4c1472             	jmp .exit6
+   214  71fb ad00d4             .exit4	lda .lc3          ;check second byte in bank 1
+   215  71fe cdef72             	cmp .save+2
+   216  7201 f006               	beq .exit5
+   217  7203 ad80c0             	lda $C080         ;select bank 2
+   218  7206 4c1472             	jmp .exit6
+   219  7209 ad00d8             .exit5	lda .lc4          ;check third byte in bank 1
+   220  720c cdf072             	cmp .save+3
+   221  720f f003               	beq .exit6
+   222  7211 ad80c0             	lda $C080         ;select bank 2
+   223  7214 28                 .exit6	plp               ;restore interrupt status
+   224  7215 adf172             	lda .save+4       ;put zero page back
+   225  7218 8506               	sta .location
+   226  721a adf272             	lda .save+5       ;like we found it
+   227  721d 8507               	sta .location+1
+   228  721f 60                 	rts               ;and go home.
+   229                          
+   230                          .exitII
+   231  7220 ad8bc0             	lda .lcbank1      ;force in language card
+   232  7223 ad8bc0             	lda .lcbank1      ;bank 1
+   233  7226 ae00d0             	ldx .lc2          ;save the byte there
+   234  7229 a9aa               	lda #.test1       ;use this as a test byte
+   235  722b 8d00d0             	sta .lc2
+   236  722e 4d00d0             	eor .lc2          ;if the same, should return zero
+   237  7231 d012               	bne .noLC
+   238  7233 4e00d0             	lsr .lc2          ;check twice just to be sure
+   239  7236 a955               	lda #.test2       ;this is the shifted value
+   240  7238 4d00d0             	eor .lc2          ;here's the second check
+   241  723b d008               	bne .noLC
+   242  723d 8e00d0             	stx .lc2          ;put it back!
+   243  7240 a940               	lda #64           ;there's 64K here
+   244  7242 4cb971             	jmp .exita
+   245  7245 a930               .noLC	lda #48           ;no restore - no LC!
+   246  7247 4cb971             	jmp .exita        ;and get out of here
+   247                          
+   248                          .muckaux
+   249  724a ae1ac0             	ldx .rdtext       ;remember graphics in X
+   250  724d ad1cc0             	lda .rdpage2      ;remember current video display
+   251  7250 0a                 	asl               ;in the carry bit
+   252  7251 a988               	lda #.test3       ;another test character
+   253  7253 2c18c0             	bit .rd80col      ;remember video mode in N
+   254  7256 8d01c0             	sta .set80col     ;enable 80-column store
+   255  7259 08                 	php               ;save N and C flags
+   256  725a 8d55c0             	sta .txtpage2     ;set page two
+   257  725d 8d51c0             	sta .txtset       ;set text
+   258  7260 ac0004             	ldy .begpage1     ;save first character
+   259  7263 8d0004             	sta .begpage1     ;and replace it with test character
+   260  7266 ad0004             	lda .begpage1     ;get it back
+   261  7269 8c0004             	sty .begpage1     ;and put back what was there
+   262  726c 28                 	plp
+   263  726d b008               	bcs .muck2        ;stay in page 2
+   264  726f 8d54c0             	sta .txtpage1     ;restore page 1
+   265  7272 3003               .muck1	bmi .muck2        ;stay in 80-columns
+   266  7274 8d00c0             	sta $c000         ;turn off 80-columns
+   267  7277 a8                 .muck2	tay               ;save returned character
+   268  7278 8a                 	txa               ;get graphics/text setting
+   269  7279 3003               	bmi .muck3
+   270  727b 8d50c0             	sta .txtclr       ;turn graphics back on
+   271  727e c088               .muck3	cpy #.test3       ;finally compare it
+   272  7280 d02f               	bne .nocard       ;no 80-column card!
+   273  7282 ad13c0             	lda .rdramrd      ;is aux memory being read?
+   274  7285 302f               	bmi .muck128      ;yup, there's 128K!
+   275  7287 ad16c0             	lda .rdaltzp      ;is aux zero page used?
+   276  728a 302a               	bmi .muck128      ;yup!
+   277  728c a02a               	ldy #.done-.start
+   278  728e beb872             .move	ldx .start-1,y    ;swap section of zero page
+   279  7291 b90000             	lda <.safe-1,y    ;code needing safe location during
+   280  7294 9600               	stx <.safe-1,y    ;reading of aux mem
+   281  7296 99b872             	sta .start-1,Y
+   282  7299 88                 	dey
+   283  729a d0f2               	bne .move
+   284  729c 4c0100             	jmp .safe         ;jump to safe ground
+   285  729f 08                 .back	php               ;save status
+   286  72a0 a02a               	ldy #.done-.start ;move zero page back
+   287  72a2 b9b872             .move2	lda .start-1,y
+   288  72a5 990000             	sta .safe-1,y
+   289  72a8 88                 	dey
+   290  72a9 d0f7               	bne .move2
+   291  72ab 68                 	pla
+   292  72ac b003               	bcs .noaux
+   293  72ae 4cb672             .isaux	jmp .muck128      ;there is 128K
+   294                          
+   295                          ;;; *  You can put your own routine at "noaux" if you wish to
+   296                          ;;; *  distinguish between 64K without an 80-column card and
+   297                          ;;; *  64K with an 80-column card.
+   298                          
+   299                          .noaux	; anop
+   300  72b1 a940               .nocard	lda #64           ;only 64K
+   301  72b3 4cb971             	jmp .exita
+   302                          .muck128
+   303  72b6 4cb771             	jmp .exit128      ;there's 128K
+   304                          
+   305                          ;;; *  This is the routine run in the safe area not affected
+   306                          ;;; *  by bank-switching the main and aux RAM.
+   307                          
+   308  72b9 a9ee               .start	lda #.test4       ;yet another test byte
+   309  72bb 8d05c0             	sta .wrcardram    ;write to aux while on main zero page
+   310  72be 8d03c0             	sta .rdcardram    ;read aux ram as well
+   311  72c1 8d0008             	sta .begpage2     ;check for sparse memory mapping
+   312  72c4 ad000c             	lda .begsprse     ;if sparse, these will be the same
+   313  72c7 c9ee               	cmp #.test4       ;value since they're 1K apart
+   314  72c9 d00e               	bne .auxmem       ;yup, there's 128K!
+   315  72cb 0e000c             	asl .begsprse     ;may have been lucky so we'll
+   316  72ce ad0008             	lda .begpage2     ;change the value and see what happens
+   317  72d1 cd000c             	cmp .begsprse
+   318  72d4 d003               	bne .auxmem
+   319  72d6 38                 	sec               ;oops, no auxiliary memory
+   320  72d7 b001               	bcs .goback
+   321  72d9 18                 .auxmem	clc
+   322  72da 8d04c0             .goback	sta .wrmainram    ;write main RAM
+   323  72dd 8d02c0             	sta .rdmainram    ;read main RAM
+   324  72e0 4c9f72             	jmp .back         ;continue with program in main mem
+   325  72e3 ea                 .done	nop               ;end of relocated program marker
+   326                          
+   327                          
+   328                          ;;; *  The storage locations for the returned machine ID:
+   329                          
+   330  72e4 00                 MACHINE  !byte  0         ;the type of Apple II
+   331  72e5 00                 ROMLEVEL !byte  0         ;which revision of the machine
+   332  72e6 00                 MEMORY	 !byte  0         ;how much memory (up to 128K)
+   333  72e7 0000               .IIgsA	 !word  0         ;16-bit field
+   334  72e9 0000               .IIgsX	 !word  0         ;16-bit field
+   335  72eb 0000               .IIgsY	 !word  0         ;16-bit field
+   336  72ed 000000000000       .save	 !fill  6,0       ;six bytes for saved data
+   337                          
+   338                          .IDTable
+   339                          	;dc  I1'1,1'      ;Apple ][
+   340                          	;dc  H'B3 38 00'
+   341  72f3 0101               	!byte 1,1
+   342  72f5 b33800             	!byte $B3,$38,0
+   343                          
+   344                          	;dc  I1'2,1'      ;Apple ][+
+   345                          	;dc  H'B3 EA 1E AD 00'
+   346  72f8 0201               	!byte 2,1
+   347  72fa b3ea1ead00         	!byte $B3,$EA,$1E,$AD,0
+   348                          
+   349                          	;dc  I1'3,1'      ;Apple /// (emulation)
+   350                          	;dc  H'B3 EA 1E 8A 00'
+   351  72ff 0301               	!byte 3,1
+   352  7301 b3ea1e8a00         	!byte $B3,$EA,$1E,$8A,0
+   353                          
+   354                          	;dc  I1'4,1'      ;Apple IIe (original)
+   355                          	;dc  H'B3 06 C0 EA 00'
+   356  7306 0401               	!byte 4,1
+   357  7308 b306c0ea00         	!byte $B3,$06,$C0,$EA,0
+   358                          
+   359                          ;  Note: You must check for the Apple IIe Card BEFORE you
+   360                          ;  check for the enhanced Apple IIe since the first
+   361                          ;  two identification bytes are the same.
+   362                          
+   363                          	;dc  I1'6,1'      ;Apple IIe Card for the Macintosh LC (1st release)
+   364                          	;dc  H'B3 06 C0 E0 DD 02 BE 00 00'
+   365  730d 0601               	!byte 6,1
+   366  730f b306c0e0dd02be00...	!byte $B3,$06,$C0,$E0,$DD,$02,$BE,$00,0
+   367                          
+   368                          	;dc  I1'4,2'      ;Apple IIe (enhanced)
+   369                          	;dc  H'B3 06 C0 E0 00'
+   370  7318 0402               	!byte 4,2
+   371  731a b306c0e000         	!byte $B3,$06,$C0,$E0,0
+   372                          
+   373                          	;dc  I1'5,1'      ;Apple IIc (original)
+   374                          	;dc  H'B3 06 C0 00 BF FF 00'
+   375  731f 0501               	!byte 5,1
+   376  7321 b306c000bfff00     	!byte $B3,$06,$C0,$00,$BF,$FF,0
+   377                          
+   378                          	;dc  I1'5,2'      ;Apple IIc (3.5 ROM)
+   379                          	;dc  H'B3 06 C0 00 BF 00 00'
+   380  7328 0502               	!byte 5,2
+   381  732a b306c000bf0000     	!byte $B3,$06,$C0,$00,$BF,$00,0
+   382                          
+   383                          	;dc  I1'5,3'      ;Apple IIc (Mem. Exp)
+   384                          	;dc  H'B3 06 C0 00 BF 03 00'
+   385  7331 0503               	!byte 5,3
+   386  7333 b306c000bf0300     	!byte $B3,$06,$C0,$00,$BF,$03,0
+   387                          
+   388                          	;dc  I1'5,4'      ;Apple IIc (Rev. Mem. Exp.)
+   389                          	;dc  H'B3 06 C0 00 BF 04 00'
+   390  733a 0504               	!byte 5,4
+   391  733c b306c000bf0400     	!byte $B3,$06,$C0,$00,$BF,$04,0
+   392                          
+   393                          	;dc  I1'5,5'      ;Apple IIc Plus
+   394                          	;dc  H'B3 06 C0 00 BF 05 00'
+   395  7343 0505               	!byte 5,5
+   396  7345 b306c000bf0500     	!byte $B3,$06,$C0,$00,$BF,$05,0
+   397                          
+   398                          	;dc  I1'0,0'      ;end of table
+   399  734c 0000               	!byte 0,0
+   400                          } ; end of zone technote2
+
+; ******** Source: audit.asm
+   262                          	;!src "../shasum/shasum.asm"
+   263                          
+   264                          ;;; If we loaded via standard delivery, turn the motor off and fix up
+   265                          ;;; CSW and KSW (in case the user typed PR#6 or IN#6 to boot).
+   266                          standard_fixup:
+   267                          	;; TODO(zellyn): actually check for standard delivery.
+   268                          	;; Turn drive motor off - do this regardless, since it doesn't hurt.
+   269  734e a62b               	ldx $2B
+   270  7350 bd88c0             	lda $C088,X
+   271                          
+   272                          	;; If we typed PR#6 or IN#6 or something similar, the low byte
+   273                          	;; of CSW or KSW will be 0.
+   274                          
+   275                          	;; Fixup CSW
+   276                          	;; Point COUT at COUT1
+   277  7353 a99e               	lda #<COUT1
+   278  7355 8536               	sta CSW
+   279  7357 a96c               	lda #>COUT1
+   280  7359 8537               	sta CSW+1
+   281                          
+   282                          	;; Fixup KSW
+   283  735b a970               	lda #<KEYIN
+   284  735d 8538               	sta KSW
+   285  735f a96c               	lda #>KEYIN
+   286  7361 8539               	sta KSW+1
+   287  7363 60                 	rts
+   288                          
+   289                          COPYTOAUX
+   290                          	;; Use our own versino of AUXMOVE routine to copy the whole program to AUX memory.
+   291  7364 20d26a             	jsr RESETALL
+   292  7367 a900               	lda #<START
+   293  7369 8506               	sta SRC
+   294  736b a960               	lda #>START
+   295  736d 8507               	sta SRC+1
+   296  736f 8d05c0             	sta SET_RAMWRT
+   297  7372 a000               	ldy #0
+   298  7374 b106               -	lda (SRC),y
+   299  7376 9106               	sta (SRC),y
+   300  7378 e606               	inc SRC
+   301  737a d002               	bne +
+   302  737c e607               	inc SRC+1
+   303  737e a506               +	lda SRC
+   304  7380 c936               	cmp #<(LASTSTRING)
+   305  7382 d0f0               	bne -
+   306  7384 a507               	lda SRC+1
+   307  7386 c98f               	cmp #>(LASTSTRING)
+   308  7388 d0ea               	bne -
+   309  738a 8d04c0             	sta RESET_RAMWRT
+   310  738d 60                 	rts
+   311                          
+   312                          ;	!if * != STRINGS {
+   313                          ;	!error "Expected STRINGS to be ", *
+   314                          ;	}
+   315                          
+   316                          	!if * > STRINGS {
+   317                          	!error "End of compilation passed STRINGS:", *
+   318                          	}
