@@ -3,21 +3,21 @@
 
 !zone auxmem {
 
-	.MEM_1 = %00000000
-	.MEM_2 = %00000001
-	.MEM_3 = %00000010
-	.MEM_4 = %00000011
-	.MEM_2_1_1_1 = (.MEM_2 << 0) + (.MEM_1 << 2) + (.MEM_1 << 4) + (.MEM_1 << 6)
-	.MEM_3_2_2_2 = (.MEM_3 << 0) + (.MEM_2 << 2) + (.MEM_2 << 4) + (.MEM_2 << 6)
+	;; Bitmask for whether ranges of Cxxx memory look like ROM or
+	;; something else. 1 means it looks like ROM, 0 means it
+	;; doesn't. How do we check whether a range looks like ROM?
+	;; Check values at four different addresses, carefully chosen
+	;; to have consistent values in different ROM versions. The
+	;; check data is at .cxtestdata
 
-	.C_8f = %0001
-	.C_12 = %0010
-	.C_47 = %0100
-	.C_3  = %1000
+	.C_12 = %0010		; Is C100-C2FF ROM or something else?
+	.C_47 = %0100		; Is C400-C7FF ROM or something else?
+	.C_3  = %1000		; Is C300-C3FF ROM or something else?
+	.C_8f = %0001		; Is C800-CFFE ROM or something else?
 	.C_0  = %0000
-	.C_skip = $80
-	.C_1348 = .C_12 | .C_3 | .C_47 | .C_8f
-	.C_38 = .C_3 | .C_8f
+	.C_skip = $80		; Skip ROM checks.
+	.C_1348 = .C_12 | .C_3 | .C_47 | .C_8f ; Everything is ROM
+	.C_38 = .C_3 | .C_8f		       ; C300-C3FF and C800-CFFE are ROM
 
 	.checkdata = tmp1
 	.ismain = tmp3
@@ -26,9 +26,18 @@
 	.desired = tmp2
 
 
+;;; Auxmem tests. First, we try the language card test again, but in
+;;; auxmem. (If the language card test failed the first time, we skip
+;;; this part.)
+;;;
+;;; Then, we try data-driven tests.
+;;;
+;;; On success, carry will be clear; on failure, set.
 AUXMEMTESTS
 	lda #0
 	sta AUXRESULT
+
+	;; If we have 64k or less, skip this test.
 	lda MEMORY
 	cmp #65
 	bcs +
@@ -42,6 +51,8 @@ AUXMEMTESTS
 	!text "TESTING AUX MEM",$8D
 	+printed
 
+	;; If we failed the Language Card test already, there's no
+	;; point in trying the auxmem version of it.
 	lda LCRESULT
 	bne .auxlc
 	+print
@@ -56,7 +67,11 @@ AUXMEMTESTS
 	lda #0
 	sta LCRESULT
 
-	;; Store distinct values in RAM areas, to see if they stay safe.
+	;; Store distinct values in RAM areas overwritten by the
+	;; language card test, to see if they stay safe. The language
+	;; card tests should leave non-auxmem memory and language card
+	;; bank alone. These $44 bytes will act as canaries.
+
 	lda $C08B		; Read and write bank 1
 	lda $C08B
 	lda #$44
@@ -109,7 +124,7 @@ AUXMEMTESTS
 +
 	lda $FE1F
 	cmp #$44
-	beq .datadriventests
+	beq .datadriventests 	; all three canaries were OK. Jump to main data-driven tests.
 	pha
 	+print
 	!text "WANT RAM $FE1F"
@@ -148,7 +163,7 @@ AUXMEMTESTS
 	sta PCH
 ;;; Main data-drive-test loop.
 .ddloop
-	ldy #0
+	ldy #0			; data-driven tests are null-terminated.
 	lda (PCL),Y
 	beq .success
 
@@ -158,6 +173,10 @@ AUXMEMTESTS
 	sta SET_RAMRD
 
 .initloop			; Loop twice: initialize aux to $3 and main to $1.
+
+	;; Store current value of A (first $3, then $1) into all
+	;; locations in [.memorylocs:.memorylocs+.memorylen]. (This
+	;; will store A in $00 several times, but that's ok.
 	ldy #.memorylen
 -	ldx .memorylocs,y
 	stx + +1
@@ -205,10 +224,11 @@ AUXMEMTESTS
 	sta .checkdata+1
 
 	;; First checkdata byte is for Cxxx tests.
-	jsr NEXTCHECK
+	jsr NEXTCHECK		; grab the next byte of check data in A, use it to set flags.
 	bmi +
 	jsr .checkCxxx
 
+	;; Save checkdata address in XY. Reset all softswitches. Then restore checkdata.
 +	ldx .checkdata
 	ldy .checkdata+1
 	jsr RESETALL
@@ -493,6 +513,48 @@ zpfromaux
 	bne -
 	rts
 
+;;; These are the main auxmem tests. Their format is:
+;;;
+;;;    lda TEST_NUMBER
+;;;    ; (do whatever you want in normal assembly)
+;;;    jsr .check
+;;;    !byte ROM_CHECK_WANT, ZP_WANT, MAIN_WANT, TEXT_WANT, HIRES_WANT, ZP_AUX_WANT, MAIN_AUX_WANT, TEXT_AUX_WANT, HIRES_AUX_WANT
+;;;
+;;;
+;;; The tests work like so:
+;;;
+;;; 1) The harness code stores $1 into all the test addresses in
+;;;    normal memory, and $3 into all the test locations in aux
+;;;    memory.
+;;;
+;;; 2) The test-specific piece of custom assembly code does whatever
+;;;    it wants to do to softswitches.
+;;;
+;;; 3) The harness code increments each of the test addresses
+;;;    once. Some will be in normal memory, some in aux memory,
+;;;    depending on what the custom code did.
+;;;
+;;; 4) If the ROM_CHECK_WANT byte is not .C_skip, then the harness
+;;;    calculates which portions of Cxxx memory are reading as ROMs,
+;;;    and validates that using the routine .checkCxxx
+;;;
+;;; 5) The harness code runs through the test addresses, one region at
+;;;    a time, checking that the values are what the test expects.
+;;;
+;;;    The regions and their test addresses (stored at .memorylocs),
+;;;    which correspond to the segments that can be independently
+;;;    pointed at main memory or aux memory, are:
+;;;
+;;;      - zero page: $ff, $100
+;;;      - main memory: $200, $3ff, $800, $1fff, $4000, $5fff, $bfff
+;;;      - text: $427, $7ff
+;;;      - hires: $2000, $3fff
+;;;
+;;;    The harness checks that the zero page main memory test
+;;;    addresses hold ZP_WANT, and that the zero page main memory test
+;;;    addresses hold ZP_AUX_WANT. Similarly for the other three
+;;;    regions.
+
 .auxtests
 
 	;; Our four basic tests --------------------------------------
@@ -738,28 +800,31 @@ zpfromaux
 .memorylen = * - .memorylocs - 2
 	!word 0
 
+;;; Bytes to check to see whether ranges of memory contain ROM or not.
+;;; If I recall correctly, these were chosen to be bytes that remain
+;;; the same in different ROM versions.
 .cxtestdata
 	;; C800-Cffe
-	!byte $00, $c8, $4c
-	!byte $21, $ca, $8d
-	!byte $43, $cc, $f0
-	!byte $b5, $ce, $7b
+	!byte $00, $c8, $4c	; CB00: 4C
+	!byte $21, $ca, $8d	; CA21: 8D
+	!byte $43, $cc, $f0	; CC43: F0
+	!byte $b5, $ce, $7b	; CEB5: 7B
 
 	;; C100-C2ff
-	!byte $4d, $c1, $a5
-	!byte $6c, $c1, $2a
-	!byte $b5, $c2, $ad
-	!byte $ff, $c2, $00
+	!byte $4d, $c1, $a5	; C14D: A5
+	!byte $6c, $c1, $2a	; C16C: 2A
+	!byte $b5, $c2, $ad	; C2B5: AD
+	!byte $ff, $c2, $00	; C2FF: 00
 
 	;; C400-C7ff
-	!byte $36, $c4, $8d
-	!byte $48, $c5, $18
-	!byte $80, $c6, $8b
-	!byte $6e, $c7, $cb
+	!byte $36, $c4, $8d	; C436: 8D
+	!byte $48, $c5, $18	; C548: 18
+	!byte $80, $c6, $8b	; C680: 8B
+	!byte $6e, $c7, $cb	; C76E: CB
 
 	;; C300-C3ff
-	!byte $00, $c3, $2c
-	!byte $0a, $c3, $0c
-	!byte $2b, $c3, $04
-	!byte $e2, $c3, $ed
+	!byte $00, $c3, $2c	; C300: 2C
+	!byte $0a, $c3, $0c	; C30A: 0C
+	!byte $2b, $c3, $04	; C32B: 04
+	!byte $e2, $c3, $ed	; C3E2: ED
 } ;auxmem
