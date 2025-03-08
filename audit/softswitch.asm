@@ -37,7 +37,7 @@ SOFTSWITCHTESTS
 
 	;; Check memory: <= 65K: don't test RAMRD
 	lda MEMORY
-	cmp #66
+	cmp #MIN_KB_FOR_AUXMEM
 	bcs .wrtloop		; Enough memory: continue
 
 	;; Not enough: skip one loop iteration, and increment SRC past RAMRD addresses
