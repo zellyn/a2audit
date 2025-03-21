@@ -37,12 +37,12 @@ AUXMEMTESTS
 	lda #0
 	sta AUXRESULT
 
-	;; If we have 64k or less, skip this test.
+	;; If we have 65k or less, skip this test. (NB. 65K=IIe with 1K 80-column card)
 	lda MEMORY
-	cmp #65
+	cmp #MIN_KB_FOR_AUXMEM
 	bcs +
 	+print
-	!text "64K OR LESS:SKIPPING AUXMEM TEST",$8D
+	!text "65K OR LESS:SKIPPING AUXMEM TEST",$8D
 	+printed
 	sec
 	rts

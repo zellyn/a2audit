@@ -10,7 +10,7 @@
      8                          
      9                          	;; Major version number
     10                          	VER_MAJOR = 1
-    11                          	VER_MINOR = 6
+    11                          	VER_MINOR = 7
     12                          
     13                          	;; Zero-page locations.
     14                          	SCRATCH = $1
@@ -222,33 +222,36 @@
     88                          	}
 
 ; ******** Source: audit.asm
+   131                          
    132                          
-   133                          main:
-   134                          	;; Initialize stack to the top.
-   135  6000 a2ff               	ldx #$ff
-   136  6002 9a                 	txs
-   137                          
-   138  6003 204e73             	jsr standard_fixup
-   139  6006 20d86c             	jsr RESET
-   140                          
-   141  6009 20146c             	jsr HOME
-   142  600c 200080208870       	+print
-   143  8003 c1d0d0ccc5a0c9c9...	!text "APPLE II AUDIT "
-   144  8012 00                 	+printed
-   145                          
-   146  600f a9b1               	lda #(VER_MAJOR+'0')
-   147  6011 209b6c             	jsr COUT
-   148  6014 a9ae               	lda #'.'
-   149  6016 209b6c             	jsr COUT
-   150  6019 a906               	lda #VER_MINOR
-   151  601b 20886c             	jsr PRBYTE
-   152                          
-   153  601e a98d               	lda #$8D
-   154  6020 209b6c             	jsr COUT
-   155  6023 a98d               	lda #$8D
-   156  6025 209b6c             	jsr COUT
-   157                          
-   158                          	;; Detection and reporting of model and memory.
+   133                          	MIN_KB_FOR_AUXMEM = 66	; IIe/IIc auxmem tests need more than 64K + 1K 80-column card
+   134                          
+   135                          main:
+   136                          	;; Initialize stack to the top.
+   137  6000 a2ff               	ldx #$ff
+   138  6002 9a                 	txs
+   139                          
+   140  6003 204e73             	jsr standard_fixup
+   141  6006 20d86c             	jsr RESET
+   142                          
+   143  6009 20146c             	jsr HOME
+   144  600c 200080208870       	+print
+   145  8003 c1d0d0ccc5a0c9c9...	!text "APPLE II AUDIT "
+   146  8012 00                 	+printed
+   147                          
+   148  600f a9b1               	lda #(VER_MAJOR+'0')
+   149  6011 209b6c             	jsr COUT
+   150  6014 a9ae               	lda #'.'
+   151  6016 209b6c             	jsr COUT
+   152  6019 a907               	lda #VER_MINOR
+   153  601b 20886c             	jsr PRBYTE
+   154                          
+   155  601e a98d               	lda #$8D
+   156  6020 209b6c             	jsr COUT
+   157  6023 a98d               	lda #$8D
+   158  6025 209b6c             	jsr COUT
+   159                          
+   160                          	;; Detection and reporting of model and memory.
 
 ; ******** Source: detect.asm
      1                          ;;; Apple II Printing of model and memory
@@ -408,35 +411,36 @@
    155                          	} ;detect
 
 ; ******** Source: audit.asm
-   160                          
-   161                          	!ifndef SKIP {
-   162                          	;; Language card tests.
-   163  6118 203061             	jsr LANGCARDTESTS
-   164                          
-   165                          	;; Auxiliary memory card tests.
-   166  611b 20b563             	jsr AUXMEMTESTS
-   167                          
-   168                          	;; Tests of softswitch-reading
-   169  611e 201969             	jsr SOFTSWITCHTESTS
-   170                          
-   171                          	;; ROM SHA-1 checks.
-   172                          	;; jsr SHASUMTESTS - do this later, because it's SLOW!
-   173                          
-   174                          	;; Keyboard tests: for now, just check we can press 'Y', 'N', SPACE, or ESC
-   175  6121 20e66c             	jsr KEYBOARDTESTS
-   176                          
-   177                          	} ; ifndef SKIP
+   161                          
+   162                          
+   163                          	!ifndef SKIP {
+   164                          	;; Language card tests.
+   165  6118 203061             	jsr LANGCARDTESTS
+   166                          
+   167                          	;; Auxiliary memory card tests.
+   168  611b 20b563             	jsr AUXMEMTESTS
+   169                          
+   170                          	;; Tests of softswitch-reading
+   171  611e 201969             	jsr SOFTSWITCHTESTS
+   172                          
+   173                          	;; ROM SHA-1 checks.
+   174                          	;; jsr SHASUMTESTS - do this later, because it's SLOW!
+   175                          
+   176                          	;; Keyboard tests: for now, just check we can press 'Y', 'N', SPACE, or ESC
+   177  6121 20e66c             	jsr KEYBOARDTESTS
    178                          
-   179                          	;; Video tests.
-   180  6124 201a6d             	jsr VIDEOTESTS
-   181                          
-   182                          end:
-   183  6127 203e81208870       	+print
-   184  8141 c5cec4             	!text "END"
-   185  8144 00                 	+printed
-   186  612a 20d26a             	jsr RESETALL
-   187  612d 4c2d61             	jmp *
-   188                          
+   179                          	} ; ifndef SKIP
+   180                          
+   181                          	;; Video tests.
+   182  6124 201a6d             	jsr VIDEOTESTS
+   183                          
+   184                          end:
+   185  6127 203e81208870       	+print
+   186  8141 c5cec4             	!text "END"
+   187  8144 00                 	+printed
+   188  612a 20d26a             	jsr RESETALL
+   189  612d 4c2d61             	jmp *
+   190                          
 
 ; ******** Source: langcard.asm
      1                          ;;; Apple II Language Card audit routines
@@ -791,6 +795,7 @@
    350                          } ;langcard
 
 ; ******** Source: audit.asm
+   191                          
 
 ; ******** Source: auxmem.asm
      1                          ;;; Apple IIe Auxiliary memory audit routines
@@ -832,12 +837,12 @@
     37  63b5 a900               	lda #0
     38  63b7 8512               	sta AUXRESULT
     39                          
-    40                          	;; If we have 64k or less, skip this test.
+    40                          	;; If we have 65k or less, skip this test. (NB. 65K=IIe with 1K 80-column card)
     41  63b9 ade672             	lda MEMORY
-    42  63bc c941               	cmp #65
+    42  63bc c942               	cmp #MIN_KB_FOR_AUXMEM
     43  63be b005               	bcs +
     44  63c0 205983208870       	+print
-    45  835c b6b4cba0cfd2a0cc...	!text "64K OR LESS:SKIPPING AUXMEM TEST",$8D
+    45  835c b6b5cba0cfd2a0cc...	!text "65K OR LESS:SKIPPING AUXMEM TEST",$8D
     46  837d 00                 	+printed
     47  63c3 38                 	sec
     48  63c4 60                 	rts
@@ -1625,6 +1630,7 @@
    830                          } ;auxmem
 
 ; ******** Source: audit.asm
+   192                          
 
 ; ******** Source: softswitch.asm
      1                          ;;; Apple IIe softswitch-reading tests
@@ -1666,7 +1672,7 @@
     37                          
     38                          	;; Check memory: <= 65K: don't test RAMRD
     39  6938 ade672             	lda MEMORY
-    40  693b c942               	cmp #66
+    40  693b c942               	cmp #MIN_KB_FOR_AUXMEM
     41  693d b00f               	bcs .wrtloop		; Enough memory: continue
     42                          
     43                          	;; Not enough: skip one loop iteration, and increment SRC past RAMRD addresses
@@ -1903,6 +1909,7 @@
    274                          } ;softswitch
 
 ; ******** Source: audit.asm
+   193                          
 
 ; ******** Source: resetall.asm
      1                          ;;; Apple II/IIe reset-everything routine
@@ -1945,6 +1952,7 @@
     38                          }
 
 ; ******** Source: audit.asm
+   194                          
 
 ; ******** Source: monitor-routines.asm
      1                          !zone monitor {
@@ -2252,6 +2260,7 @@
    303                          } ; monitor
 
 ; ******** Source: audit.asm
+   195                          
 
 ; ******** Source: keyboard.asm
      1                          ;;; Apple II keyboard and keyboard audit routines
@@ -2295,6 +2304,7 @@
     39                          } ;keyboard
 
 ; ******** Source: audit.asm
+   196                          
 
 ; ******** Source: video.asm
      1                          ;;; Apple II video audit routines
@@ -2779,6 +2789,7 @@
    480                          
 
 ; ******** Source: audit.asm
+   197                          
 
 ; ******** Source: printtest.asm
      1                          ;;; Helper routines for printing out sequences of test code.
@@ -2828,70 +2839,71 @@
     45                          } ;printtest
 
 ; ******** Source: audit.asm
-   197                          	;!src "shasumtests.asm"
    198                          
-   199                          print
-   200  7088 ad81c0             	lda $C081
-   201  708b ad81c0             	lda $C081
-   202  708e 68                 	pla
-   203  708f 8d9f70             	sta getch+1
-   204  7092 68                 	pla
-   205  7093 8da070             	sta getch+2
-   206  7096 ee9f70             -	inc getch+1
-   207  7099 d003               	bne getch
-   208  709b eea070             	inc getch+2
-   209  709e adedfe             getch	lda $FEED		; FEED gets modified
-   210  70a1 f006               	beq +
-   211  70a3 209b6c             	jsr COUT
-   212  70a6 4c9670             	jmp -
-   213  70a9 60                 +	rts
-   214                          
-   215                          ;;; Print a string of bytes, as hex.
-   216                          ;;; Address in SRC, count in A.
-   217                          ;;; Burns A,Y.
-   218                          prbytes:
-   219  70aa a000               	ldy #0
-   220  70ac 48                 -	pha
-   221  70ad b106               	lda (SRC),y
-   222  70af 20886c             	jsr PRBYTE
-   223  70b2 c8                 	iny
-   224  70b3 68                 	pla
-   225  70b4 69ff               	adc #$ff
-   226  70b6 d0f4               	bne -
-   227  70b8 60                 	rts
-   228                          
-   229                          
-   230                          errora
-   231  70b9 48                 	pha
-   232  70ba ad82c0             	lda $C082
-   233  70bd a9c1               	lda #'A'
-   234  70bf 209b6c             	jsr COUT
-   235  70c2 a9ba               	lda #':'
-   236  70c4 209b6c             	jsr COUT
-   237  70c7 68                 	pla
-   238  70c8 20886c             	jsr PRBYTE
-   239  70cb 20846c             	jsr CROUT
-   240                          error
-   241  70ce ad82c0             	lda $C082
-   242  70d1 68                 	pla
-   243  70d2 8de270             	sta getche+1
-   244  70d5 68                 	pla
-   245  70d6 8de370             	sta getche+2
-   246  70d9 eee270             -	inc getche+1
-   247  70dc d003               	bne getche
-   248  70de eee370             	inc getche+2
-   249  70e1 adedfe             getche	lda $FEED		; FEED gets modified
-   250  70e4 f006               	beq +
-   251  70e6 209b6c             	jsr COUT
-   252  70e9 4cd970             	jmp -
-   253                          +
-   254  70ec 201a8f208870       	+print
-   255  8f1d dac5ccccd9ceaec3...	!text "ZELLYN.COM/A2AUDIT/V0#E",0
-   256  8f35 00                 	+printed
-   257  70ef 205e6b             	jsr PRNTYX
-   258  70f2 a98d               	lda #$8D
-   259  70f4 209b6c             	jsr COUT
-   260  70f7 60                 rts
+   199                          	;!src "shasumtests.asm"
+   200                          
+   201                          print
+   202  7088 ad81c0             	lda $C081
+   203  708b ad81c0             	lda $C081
+   204  708e 68                 	pla
+   205  708f 8d9f70             	sta getch+1
+   206  7092 68                 	pla
+   207  7093 8da070             	sta getch+2
+   208  7096 ee9f70             -	inc getch+1
+   209  7099 d003               	bne getch
+   210  709b eea070             	inc getch+2
+   211  709e adedfe             getch	lda $FEED		; FEED gets modified
+   212  70a1 f006               	beq +
+   213  70a3 209b6c             	jsr COUT
+   214  70a6 4c9670             	jmp -
+   215  70a9 60                 +	rts
+   216                          
+   217                          ;;; Print a string of bytes, as hex.
+   218                          ;;; Address in SRC, count in A.
+   219                          ;;; Burns A,Y.
+   220                          prbytes:
+   221  70aa a000               	ldy #0
+   222  70ac 48                 -	pha
+   223  70ad b106               	lda (SRC),y
+   224  70af 20886c             	jsr PRBYTE
+   225  70b2 c8                 	iny
+   226  70b3 68                 	pla
+   227  70b4 69ff               	adc #$ff
+   228  70b6 d0f4               	bne -
+   229  70b8 60                 	rts
+   230                          
+   231                          
+   232                          errora
+   233  70b9 48                 	pha
+   234  70ba ad82c0             	lda $C082
+   235  70bd a9c1               	lda #'A'
+   236  70bf 209b6c             	jsr COUT
+   237  70c2 a9ba               	lda #':'
+   238  70c4 209b6c             	jsr COUT
+   239  70c7 68                 	pla
+   240  70c8 20886c             	jsr PRBYTE
+   241  70cb 20846c             	jsr CROUT
+   242                          error
+   243  70ce ad82c0             	lda $C082
+   244  70d1 68                 	pla
+   245  70d2 8de270             	sta getche+1
+   246  70d5 68                 	pla
+   247  70d6 8de370             	sta getche+2
+   248  70d9 eee270             -	inc getche+1
+   249  70dc d003               	bne getche
+   250  70de eee370             	inc getche+2
+   251  70e1 adedfe             getche	lda $FEED		; FEED gets modified
+   252  70e4 f006               	beq +
+   253  70e6 209b6c             	jsr COUT
+   254  70e9 4cd970             	jmp -
+   255                          +
+   256  70ec 201a8f208870       	+print
+   257  8f1d dac5ccccd9ceaec3...	!text "ZELLYN.COM/A2AUDIT/V0#E",0
+   258  8f35 00                 	+printed
+   259  70ef 205e6b             	jsr PRNTYX
+   260  70f2 a98d               	lda #$8D
+   261  70f4 209b6c             	jsr COUT
+   262  70f7 60                 rts
 
 ; ******** Source: technote2.asm
      1                          ;;; From http://www.1000bit.it/support/manuali/apple/technotes/misc/tn.misc.02.html
@@ -3296,60 +3308,61 @@
    400                          } ; end of zone technote2
 
 ; ******** Source: audit.asm
-   262                          	;!src "../shasum/shasum.asm"
    263                          
-   264                          ;;; If we loaded via standard delivery, turn the motor off and fix up
-   265                          ;;; CSW and KSW (in case the user typed PR#6 or IN#6 to boot).
-   266                          standard_fixup:
-   267                          	;; TODO(zellyn): actually check for standard delivery.
-   268                          	;; Turn drive motor off - do this regardless, since it doesn't hurt.
-   269  734e a62b               	ldx $2B
-   270  7350 bd88c0             	lda $C088,X
-   271                          
-   272                          	;; If we typed PR#6 or IN#6 or something similar, the low byte
-   273                          	;; of CSW or KSW will be 0.
-   274                          
-   275                          	;; Fixup CSW
-   276                          	;; Point COUT at COUT1
-   277  7353 a99e               	lda #<COUT1
-   278  7355 8536               	sta CSW
-   279  7357 a96c               	lda #>COUT1
-   280  7359 8537               	sta CSW+1
-   281                          
-   282                          	;; Fixup KSW
-   283  735b a970               	lda #<KEYIN
-   284  735d 8538               	sta KSW
-   285  735f a96c               	lda #>KEYIN
-   286  7361 8539               	sta KSW+1
-   287  7363 60                 	rts
-   288                          
-   289                          COPYTOAUX
-   290                          	;; Use our own versino of AUXMOVE routine to copy the whole program to AUX memory.
-   291  7364 20d26a             	jsr RESETALL
-   292  7367 a900               	lda #<START
-   293  7369 8506               	sta SRC
-   294  736b a960               	lda #>START
-   295  736d 8507               	sta SRC+1
-   296  736f 8d05c0             	sta SET_RAMWRT
-   297  7372 a000               	ldy #0
-   298  7374 b106               -	lda (SRC),y
-   299  7376 9106               	sta (SRC),y
-   300  7378 e606               	inc SRC
-   301  737a d002               	bne +
-   302  737c e607               	inc SRC+1
-   303  737e a506               +	lda SRC
-   304  7380 c936               	cmp #<(LASTSTRING)
-   305  7382 d0f0               	bne -
-   306  7384 a507               	lda SRC+1
-   307  7386 c98f               	cmp #>(LASTSTRING)
-   308  7388 d0ea               	bne -
-   309  738a 8d04c0             	sta RESET_RAMWRT
-   310  738d 60                 	rts
-   311                          
-   312                          ;	!if * != STRINGS {
-   313                          ;	!error "Expected STRINGS to be ", *
-   314                          ;	}
-   315                          
-   316                          	!if * > STRINGS {
-   317                          	!error "End of compilation passed STRINGS:", *
-   318                          	}
+   264                          	;!src "../shasum/shasum.asm"
+   265                          
+   266                          ;;; If we loaded via standard delivery, turn the motor off and fix up
+   267                          ;;; CSW and KSW (in case the user typed PR#6 or IN#6 to boot).
+   268                          standard_fixup:
+   269                          	;; TODO(zellyn): actually check for standard delivery.
+   270                          	;; Turn drive motor off - do this regardless, since it doesn't hurt.
+   271  734e a62b               	ldx $2B
+   272  7350 bd88c0             	lda $C088,X
+   273                          
+   274                          	;; If we typed PR#6 or IN#6 or something similar, the low byte
+   275                          	;; of CSW or KSW will be 0.
+   276                          
+   277                          	;; Fixup CSW
+   278                          	;; Point COUT at COUT1
+   279  7353 a99e               	lda #<COUT1
+   280  7355 8536               	sta CSW
+   281  7357 a96c               	lda #>COUT1
+   282  7359 8537               	sta CSW+1
+   283                          
+   284                          	;; Fixup KSW
+   285  735b a970               	lda #<KEYIN
+   286  735d 8538               	sta KSW
+   287  735f a96c               	lda #>KEYIN
+   288  7361 8539               	sta KSW+1
+   289  7363 60                 	rts
+   290                          
+   291                          COPYTOAUX
+   292                          	;; Use our own versino of AUXMOVE routine to copy the whole program to AUX memory.
+   293  7364 20d26a             	jsr RESETALL
+   294  7367 a900               	lda #<START
+   295  7369 8506               	sta SRC
+   296  736b a960               	lda #>START
+   297  736d 8507               	sta SRC+1
+   298  736f 8d05c0             	sta SET_RAMWRT
+   299  7372 a000               	ldy #0
+   300  7374 b106               -	lda (SRC),y
+   301  7376 9106               	sta (SRC),y
+   302  7378 e606               	inc SRC
+   303  737a d002               	bne +
+   304  737c e607               	inc SRC+1
+   305  737e a506               +	lda SRC
+   306  7380 c936               	cmp #<(LASTSTRING)
+   307  7382 d0f0               	bne -
+   308  7384 a507               	lda SRC+1
+   309  7386 c98f               	cmp #>(LASTSTRING)
+   310  7388 d0ea               	bne -
+   311  738a 8d04c0             	sta RESET_RAMWRT
+   312  738d 60                 	rts
+   313                          
+   314                          ;	!if * != STRINGS {
+   315                          ;	!error "Expected STRINGS to be ", *
+   316                          ;	}
+   317                          
+   318                          	!if * > STRINGS {
+   319                          	!error "End of compilation passed STRINGS:", *
+   320                          	}

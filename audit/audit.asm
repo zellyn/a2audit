@@ -8,7 +8,7 @@
 
 	;; Major version number
 	VER_MAJOR = 1
-	VER_MINOR = 6
+	VER_MINOR = 7
 
 	;; Zero-page locations.
 	SCRATCH = $1
@@ -129,6 +129,8 @@
 
 	;; Printing and error macros.
 	!src "macros.asm"
+
+	MIN_KB_FOR_AUXMEM = 66	; IIe/IIc auxmem tests need more than 64K + 1K 80-column card
 
 main:
 	;; Initialize stack to the top.
